@@ -146,7 +146,7 @@
       ]
     },
     {
-      "source": "/admin(?:/.*)?",
+      "source": "/admin(/.*)?",
       "headers": [
         {
           "key": "X-Robots-Tag",
