@@ -3,56 +3,27 @@
 Clean Vercel + Supabase deployment package.
 
 ## Project structure
-- `src/` — **editable source.** Every HTML page, and every frontend CSS/JS
-  file, lives here in readable form. This is what you edit; nothing under
-  `src/` is ever deployed directly.
-- `public/` — **generated output.** Produced by `npm run build` (see below);
-  wiped and rebuilt every time. Never hand-edit anything here — it's not
-  committed to git and your changes would be silently overwritten on the
-  next build.
-- `scripts/build.js` — the build step. For each page it bundles that page's
-  own CSS files into one minified stylesheet and its own JS files into one
-  minified, name-mangled script, then rewrites the page's `<link>`/`<script>`
-  tags to point at the bundle. Third-party tags (Google Fonts, the Supabase
-  CDN script) are left untouched.
-- `api/[...path].js` + `lib/api/*.js` — Vercel serverless API functions
-  (a single catch-all function dispatching to per-resource modules, so the
-  project stays under Vercel's per-function limits).
-- `supabase/*.sql` — see `SUPABASE-REPAIR-ORDER.md` for the order these need
-  to be run in.
+- `index.html` — public website (single-page app for Home/About/Programs/Partnership/College/Give/Contact)
+- `news.html`, `live.html`, `prophetic-room.html`, `community.html` — standalone feature pages linked from the "TCC Hub" nav
+- `admin/index.html` — admin dashboard
+- `api/*.js` — Vercel serverless API functions
+- `supabase/tcc_v8_safe_migration.sql` — safe database additions (news, prophetic room, live status, etc.)
+- `supabase/community_schema.sql` — Community platform tables (profiles, posts, comments, likes)
+- `supabase/community_schema_patch.sql` — defensive repair plus Community Storage, Giving/Offering accounts, and one-time invite-link safeguards
 
 ## Vercel
 Import the GitHub repository with the files at repository root.
 Use:
 - Framework Preset: Other
 - Root Directory: `.`
-- Build Command: `npm run build` (already set in `vercel.json` — Vercel
-  should pick it up automatically)
-- Output Directory: `public` (also set in `vercel.json`)
+- Build Command: empty
+- Output Directory: empty
 - Install Command: `npm install`
-
-Vercel runs `npm run build` on every deploy, which regenerates `public/`
-from `src/` — bundling, minifying and mangling the frontend CSS/JS so the
-page someone would view-source or download from the live site is a single
-obfuscated file per page rather than the readable source. **If you add a new
-CSS or JS file under `src/`, register it in `scripts/build.js`'s `PAGES`
-list** — files not listed there won't be picked up by the build.
 
 This project ships with a `vercel.json` that is required — it rewrites clean
 URLs like `/about`, `/contact` and `/give` to `index.html` (so the client-side
 router can render them) and maps friendly API paths (e.g. `/api/events`) to
-the consolidated handler functions under `lib/api/`.
-
-### Working locally
-```
-npm install       # pulls in terser, clean-css, html-minifier-terser
-npm run build     # generates public/ from src/
-vercel dev        # or your usual local Vercel workflow, serving public/
-```
-Because `package.json` just gained new devDependencies and this was set up
-without network access to regenerate it, **run `npm install` once and commit
-the resulting `package-lock.json`** before your next deploy — otherwise
-Vercel's `npm ci` step will fail on a lockfile that doesn't match.
+the consolidated handler functions in `api/*.js`.
 
 ## Environment variables
 Set these in Vercel:
