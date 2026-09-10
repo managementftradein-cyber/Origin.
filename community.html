@@ -18,6 +18,17 @@
 .tcc-btn:disabled{opacity:.55;cursor:not-allowed}
 .tcc-btn.outline{background:transparent;color:var(--tcc-red);border:1px solid rgba(var(--tcc-red-rgb),.5)}
 .tcc-empty{padding:60px 20px;text-align:center;color:#888;border:1px dashed rgba(var(--tcc-red-rgb),.25)}
+.tcc-empty-icon{font-size:28px;margin-bottom:14px;color:var(--tcc-red);opacity:.85;line-height:1}
+.tcc-empty h3{color:#e5c873;font-size:15px;margin:0 0 8px;font-family:Inter,sans-serif}
+.tcc-empty p{margin:0;font-size:13px;line-height:1.6;color:#999}
+.tcc-skel{background:#111;border:1px solid rgba(var(--tcc-red-rgb),.12);padding:24px}
+.tcc-skel-head{display:flex;gap:10px;align-items:center;margin-bottom:16px}
+.tcc-skel-avatar{width:36px;height:36px;border-radius:50%;background:#1c1c1c;flex:none}
+.tcc-skel-line{height:11px;background:linear-gradient(90deg,#171717,#242424,#171717);background-size:200% 100%;animation:tccSkelShine 1.4s ease-in-out infinite;border-radius:3px}
+.tcc-skel-line+.tcc-skel-line{margin-top:10px}
+@keyframes tccSkelShine{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.tcc-feedmore{text-align:center;margin-top:22px;min-height:1px}
+.tcc-feedmore .tcc-msg{margin-top:10px}
 .tcc-panel{background:#111;border:1px solid rgba(var(--tcc-red-rgb),.18);padding:30px}
 .tcc-panel input,.tcc-panel textarea{width:100%;box-sizing:border-box;background:#080808;color:#fff;border:1px solid #2b2b2b;padding:14px;margin:7px 0 13px;font-family:inherit}
 @media(max-width:800px){.tcc-feature-nav{overflow:auto;justify-content:flex-start;white-space:nowrap}}
@@ -223,6 +234,7 @@ body{overflow-x:hidden}
   <div id="meetingBanner"></div>
 
   <div id="feed" class="tcc-feed"><div class="tcc-empty">Loading community feed…</div></div>
+  <div id="feedMore" class="tcc-feedmore"></div>
 
 </div></section>
 </main>
@@ -242,6 +254,11 @@ const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&
 const timeAgo=iso=>{if(!iso)return'';const s=Math.max(1,Math.floor((Date.now()-new Date(iso).getTime())/1000));if(s<60)return s+'s ago';const m=Math.floor(s/60);if(m<60)return m+'m ago';const h=Math.floor(m/60);if(h<24)return h+'h ago';const d=Math.floor(h/24);if(d<7)return d+'d ago';return new Date(iso).toLocaleDateString(undefined,{month:'short',day:'numeric'})};
 const initials=name=>String(name||'?').trim().split(/\s+/).map(w=>w[0]).slice(0,2).join('').toUpperCase()||'?';
 let profile=null;
+const FEED_PAGE_SIZE=10;
+let feedCursor=null,feedLoading=false,feedExhausted=false;
+function skeletonCard(){return `<div class="tcc-skel"><div class="tcc-skel-head"><div class="tcc-skel-avatar"></div><div style="flex:1"><div class="tcc-skel-line" style="width:130px"></div><div class="tcc-skel-line" style="width:70px;margin-top:6px"></div></div></div><div class="tcc-skel-line" style="width:96%"></div><div class="tcc-skel-line" style="width:82%"></div><div class="tcc-skel-line" style="width:55%"></div></div>`}
+function skeletonHTML(n){return Array.from({length:n}).map(skeletonCard).join('')}
+function emptyState(icon,title,body){return `<div class="tcc-empty"><div class="tcc-empty-icon">${icon}</div><h3>${esc(title)}</h3><p>${esc(body)}</p></div>`}
 
 async function api(path,method='GET',body=null,auth=false){
  const opt={method,headers:{}};
@@ -283,14 +300,37 @@ function commentRow(c){
  return `<div class="tcc-comment"><div class="tcc-avatar" style="width:28px;height:28px;font-size:11px">${esc(initials(c.author))}</div><div class="tcc-comment-body"><b>${esc(c.author)} · ${esc(timeAgo(c.created_at))}${mine}</b>${esc(c.body)}</div></div>`;
 }
 
-async function loadFeed(){
+async function loadFeed(reset=true){
  const el=$('#feed');
+ if(reset){feedCursor=null;feedExhausted=false;el.innerHTML=skeletonHTML(3);$('#feedMore').innerHTML=''}
+ if(feedLoading||(feedExhausted&&!reset))return;
+ feedLoading=true;if(!reset)renderLoadMore();
  try{
-  const d=await api('/api/community?type=feed');
+  const qs=new URLSearchParams({type:'feed',limit:FEED_PAGE_SIZE});
+  if(feedCursor)qs.set('before',feedCursor);
+  const d=await api('/api/community?'+qs.toString());
   const items=d.items||[];
-  el.innerHTML=items.length?items.map(postCard).join(''):'<div class="tcc-empty">No posts yet. Be the first to share something with the church family.</div>';
+  if(reset)el.innerHTML='';
+  if(!items.length&&reset){
+   el.innerHTML=emptyState('✦','No posts yet','Be the first to share something with the church family.');
+   feedExhausted=true;
+  }else{
+   el.insertAdjacentHTML('beforeend',items.map(postCard).join(''));
+   if(items.length)feedCursor=items[items.length-1].created_at;
+   feedExhausted=items.length<FEED_PAGE_SIZE;
+  }
   bindFeed();
- }catch(e){el.innerHTML=`<div class="tcc-empty">${esc(e.message)}</div>`}
+ }catch(e){
+  if(reset)el.innerHTML=emptyState('⚠','Could not load the feed',e.message);
+ }finally{feedLoading=false;renderLoadMore()}
+}
+
+function renderLoadMore(){
+ const el=$('#feedMore');if(!el)return;
+ if(feedLoading){el.innerHTML=$('#feed').children.length?'<button class="tcc-btn outline" disabled>Loading…</button>':'';return}
+ if(feedExhausted){el.innerHTML='';return}
+ el.innerHTML='<button class="tcc-btn outline" id="loadMoreBtn">Load more</button>';
+ $('#loadMoreBtn').onclick=()=>loadFeed(false);
 }
 
 function bindFeed(){

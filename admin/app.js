@@ -131,13 +131,16 @@ async function loadGallery(){
  const el=$('#galleryGrid');el.innerHTML='<div class="loading">Loading media…</div>';
  try{
   const d=await api('gallery'),rows=d.items||[];
-  if(!rows.length){el.innerHTML='<div class="empty">No photos yet. Upload your first image.</div>';return}
-  el.innerHTML=rows.map(r=>`<article class="media"><img src="${esc(r.url)}" alt="${esc(r.caption||'')}"><div class="media-body"><div class="media-title">${esc(r.caption||'Untitled')}</div><div class="media-meta">${esc(r.category||'Gallery')}</div><button class="btn danger" data-gdel="${esc(r.id)}">Delete</button></div></article>`).join('');
+  if(!rows.length){el.innerHTML='<div class="empty">No media yet. Upload or add your first photo or video.</div>';return}
+  el.innerHTML=rows.map(r=>{const isVideo=r.media_type==='video';const thumb=isVideo?`<video src="${esc(r.url)}" muted loop playsinline></video>`:`<img src="${esc(r.url)}" alt="${esc(r.caption||'')}">`;return `<article class="media">${thumb}<div class="media-body"><div class="media-title">${esc(r.caption||'Untitled')}${isVideo?'<span class="media-tag">Video</span>':''}</div><div class="media-meta">${esc(r.category||'Gallery')}</div><button class="btn danger" data-gdel="${esc(r.id)}">Delete</button></div></article>`}).join('');
   $$('[data-gdel]').forEach(b=>b.onclick=async()=>{if(!confirm('Delete this media record?'))return;try{await api('gallery','DELETE',{id:b.dataset.gdel});toast('Photo removed');await loadGallery()}catch(e){toast(e.message,'error')}});
  }catch(e){el.innerHTML=`<div class="errorbox">${esc(e.message)}</div>`}
 }
 async function upload(file){
- if(!file)return;if(file.size>5*1024*1024){toast('Image must be 5MB or smaller.','error');return}
+ if(!file)return;
+ const isVideo=file.type.startsWith('video/');
+ const maxBytes=isVideo?8*1024*1024:5*1024*1024;
+ if(file.size>maxBytes){toast(`${isVideo?'Video':'Image'} must be ${Math.round(maxBytes/(1024*1024))}MB or smaller. For a longer clip, use "Add by URL" instead.`,'error');return}
  const category=prompt('Category: type Hero for a homepage background, or Gallery','Hero')||'Gallery';
  const reader=new FileReader();
  reader.onload=async()=>{
@@ -146,9 +149,20 @@ async function upload(file){
    const r=await fetch('/api/upload',{method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({contentType:file.type,dataBase64:parts[1],caption:file.name,category})});
    let d={};try{d=await r.json()}catch(_){}
    if(!r.ok)throw Error(d.error||`Upload failed (${r.status})`);
-   toast('Photo uploaded successfully');await loadGallery();
+   toast(`${isVideo?'Video':'Photo'} uploaded successfully`);await loadGallery();
   }catch(e){toast(e.message,'error')}
  };reader.readAsDataURL(file);
+}
+async function addMediaByUrl(){
+ const url=prompt('Paste the direct image or video URL (e.g. ending in .jpg, .mp4, .webm):');
+ if(!url)return;
+ const isVideo=/\.(mp4|webm|mov|m4v|ogv)(\?.*)?$/i.test(url);
+ const category=prompt('Category: type Hero for a homepage background, or Gallery','Hero')||'Gallery';
+ const caption=prompt('Optional caption:','')||'';
+ try{
+  await api('gallery','POST',{data:{url,caption,category,media_type:isVideo?'video':'image',is_active:true,display_order:0}});
+  toast(`${isVideo?'Video':'Photo'} added successfully`);await loadGallery();
+ }catch(e){toast(e.message,'error')}
 }
 async function loadGivingAccounts(){
  const el=$('#table-givingAccounts'); if(!el)return; el.innerHTML='<div class="loading">Loading…</div>';
@@ -373,6 +387,7 @@ function bind(){
  bindMeetingForm();
  $('#uploadBtn')?.addEventListener('click',()=>$('#fileInput').click());
  $('#fileInput')?.addEventListener('change',e=>{if(e.target.files[0])upload(e.target.files[0]);e.target.value=''});
+ $('#addMediaUrlBtn')?.addEventListener('click',addMediaByUrl);
 }
 async function boot(){
  try{

@@ -25,7 +25,7 @@ function shuffle(arr) {
 }
 
 async function getPhotos(db) {
-  const q = await db.from('gallery_photos').select('id,url,caption,category').eq('is_active', true).order('display_order', { ascending: true }).limit(60);
+  const q = await db.from('gallery_photos').select('id,url,caption,category,media_type').eq('is_active', true).order('display_order', { ascending: true }).limit(60);
   if (q.error) throw q.error;
   return { items: shuffle(q.data || []) };
 }
@@ -47,13 +47,13 @@ async function getSiteContent(db) {
     .select('church_name,email,phone,location,service_times,about_label,about_heading,about_body,about_quote,about_image_url,hero_eyebrow,hero_title,hero_body,hero_interval_seconds,map_url,facebook_url,instagram_url,youtube_url,spotify_url,launch_enabled,launch_date,launch_title,launch_subtitle,launch_complete_title,launch_complete_body,launch_timezone')
     .eq('id', 1).maybeSingle();
   if (settings.error) throw settings.error;
-  const photos = await db.from('gallery_photos').select('id,url,caption,category,display_order,is_active').eq('is_active', true).order('display_order', { ascending: true }).limit(100);
+  const photos = await db.from('gallery_photos').select('id,url,caption,category,media_type,display_order,is_active').eq('is_active', true).order('display_order', { ascending: true }).limit(100);
   if (photos.error) throw photos.error;
   const items = photos.data || [];
   const hero = items.filter(x => String(x.category || '').toLowerCase() === 'hero');
   return {
     settings: settings.data || {},
-    hero: hero.length ? hero : items.slice(0, 3),
+    hero: (hero.length ? hero : items.slice(0, 3)).slice(0, 12),
     gallery: items.filter(x => String(x.category || '').toLowerCase() !== 'hero')
   };
 }
