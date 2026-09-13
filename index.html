@@ -61,13 +61,13 @@ footer{background:var(--black);color:#fff;padding:75px 0 25px;border-top:1px sol
   letter-spacing:.28em;
   text-transform:uppercase;
   text-shadow:0 0 18px rgba(255,255,255,.18),0 0 42px rgba(21,94,239,.2);
-  animation:gracePeacePulse 2.8s ease-in-out infinite;
+  animation:PeacelovePulse 2.8s ease-in-out infinite;
 }
-.launch-grace-peace span{
+.launch-peace-love span{
   display:inline-block;
   transform-origin:center;
 }
-.launch-grace-peace i{
+.launch-peace-love i{
   font-family:Georgia,serif;
   font-style:normal;
   font-size:.55em;
@@ -75,7 +75,7 @@ footer{background:var(--black);color:#fff;padding:75px 0 25px;border-top:1px sol
   color:#b9d2ff;
   opacity:.8;
 }
-@keyframes gracePeacePulse{
+@keyframes PeaceLovePulse{
   0%,100%{transform:scale(.82);opacity:.62;filter:blur(.15px)}
   18%{transform:scale(1);opacity:1;filter:blur(0);text-shadow:0 0 12px rgba(255,255,255,.35),0 0 34px rgba(21,94,239,.35)}
   38%{transform:scale(1.16);opacity:1;text-shadow:0 0 20px rgba(255,255,255,.55),0 0 58px rgba(21,94,239,.45)}
@@ -83,7 +83,7 @@ footer{background:var(--black);color:#fff;padding:75px 0 25px;border-top:1px sol
   72%{transform:scale(1.05);opacity:1}
 }
 @media(max-width:640px){
-  .launch-grace-peace{
+  .launch-peace-love{
     margin-top:38px;
     padding:10px 16px;
     gap:10px;
@@ -230,9 +230,9 @@ body{overflow-x:hidden}
 </head>
 <body><div id="launchScreen" aria-live="polite"><div class="launch-glow"></div><div class="launch-rays"></div><div class="launch-stars"></div><div class="launch-card"><div class="launch-brand"><img id="launchLogo" src="/assets/logo-emblem.png" alt="TCC"><span id="launchBrand">THE CHRISTOCENTRIC CHURCH</span></div><div id="launchCountdownView"><div class="launch-kicker">A new chapter is about to begin</div><h1 class="launch-title" id="launchTitle">THE ORIGIN IS NEAR</h1><p class="launch-subtitle" id="launchSubtitle">Christ at the centre. Everything else follows.</p><div class="launch-countdown"><div class="launch-unit"><span class="launch-number" id="launchDays">00</span><span class="launch-label">Days</span></div><div class="launch-unit"><span class="launch-number" id="launchHours">00</span><span class="launch-label">Hours</span></div><div class="launch-unit"><span class="launch-number" id="launchMinutes">00</span><span class="launch-label">Minutes</span></div><div class="launch-unit"><span class="launch-number" id="launchSeconds">00</span><span class="launch-label">Seconds</span></div></div><div class="launch-date" id="launchDateLabel"></div></div><div class="launch-live" id="launchLive"><h2 id="launchCompleteTitle">WE ARE LIVE</h2><p id="launchCompleteBody">Welcome to The Christocentric Church.</p><div class="launch-actions"><a class="launch-enter" href="/">Enter the Church Experience →</a></div></div>
 <div class="launch-grace-peace" aria-label="Grace and Peace">
-  <span>GRACE</span>
-  <i aria-hidden="true">•</i>
   <span>PEACE</span>
+  <i aria-hidden="true">•</i>
+  <span>LOVE</span>
 </div>
 </div></div></div>
 <div id="loader"><div class="loader-mark"><img src="/assets/logo-emblem.png" alt=""><div class="loader-line"></div></div></div>
