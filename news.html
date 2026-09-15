@@ -124,31 +124,44 @@ body{overflow-x:hidden}
 </head><body>
 <div class="tcc-desktop-hub" aria-label="TCC special sections">
   <span class="hub-label">TCC Hub</span>
-  <a href="community.html">Community</a>
-  <a href="news.html">TCC News</a>
-  <a href="prophetic-room.html">Prophetic Room</a>
-  <a class="hub-live" href="live.html"><span class="live-dot"></span> Live</a>
+  <a href="/community">Community</a>
+  <a href="/news">TCC News</a>
+  <a href="/prophetic-room">Prophetic Room</a>
+  <a class="hub-live" href="/live"><span class="live-dot"></span> Live</a>
 </div>
 
-<nav class="tcc-feature-nav"><a href="index.html">TCC</a><a href="index.html">Home</a><a href="community.html">Community</a><a href="prophetic-room.html">Prophetic Room</a><a href="news.html">TCC News</a><a href="live.html"><span class="live-dot"></span> Live</a></nav><main class="tcc-feature"><section class="tcc-hero"><div class="tcc-kicker">Stay Connected</div><h1>TCC News</h1><p>Announcements, ministry updates, testimonies, events and church communications.</p></section><section class="tcc-wrap"><div id="news" class="tcc-news"><div class="tcc-empty">Loading TCC News…</div></div></section></main>
+<nav class="tcc-feature-nav"><a href="/">TCC</a><a href="/">Home</a><a href="/community">Community</a><a href="/prophetic-room">Prophetic Room</a><a href="/news">TCC News</a><a href="/live"><span class="live-dot"></span> Live</a></nav><main class="tcc-feature"><section class="tcc-hero"><div class="tcc-kicker">Stay Connected</div><h1>TCC News</h1><p>Announcements, ministry updates, testimonies, events and church communications.</p></section><section class="tcc-wrap"><div id="news" class="tcc-news"><div class="tcc-empty">Loading TCC News…</div></div></section></main>
 <style>.tcc-transition{position:fixed;inset:0;background:#080808;z-index:99999;display:grid;place-items:center;opacity:0;pointer-events:none;transition:.42s}.tcc-transition.active{opacity:1;pointer-events:auto}.tcc-transition span{color:var(--tcc-red);font:800 12px Inter;letter-spacing:.35em}</style>
 <script>
-(()=>{const o=document.createElement('div');o.className='tcc-transition';o.innerHTML='<span>TCC</span>';document.body.appendChild(o);
-document.querySelectorAll('a[href$=".html"]').forEach(a=>a.addEventListener('click',e=>{const h=a.getAttribute('href');if(!h||h.startsWith('http'))return;e.preventDefault();o.classList.add('active');setTimeout(()=>location.href=h,420)}));})();
+(()=>{
+  const o=document.createElement('div');o.className='tcc-transition';o.innerHTML='<span>TCC</span>';document.body.appendChild(o);
+  document.addEventListener('click',e=>{
+    const a=e.target.closest('a[href]');
+    if(!a) return;
+    const href=a.getAttribute('href')||'';
+    if(!href || href.startsWith('#') || href.startsWith('http') || href.startsWith('mailto:') || href.startsWith('tel:') || a.target==='_blank') return;
+    const u=new URL(href,location.href);
+    if(u.origin!==location.origin) return;
+    if(u.pathname===location.pathname && u.search===location.search && u.hash) return;
+    e.preventDefault();
+    o.classList.add('active');
+    setTimeout(()=>{ window.location.assign(u.pathname+u.search+u.hash); },180);
+  });
+})();
 </script>
 <script>(async()=>{let x=document.getElementById('news');try{let r=await fetch('/api/news'),j=await r.json();let d=j.items||[];x.innerHTML=d.length?d.map(n=>`<article><div class="tcc-meta">${n.created_at?new Date(n.created_at).toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'}):''}</div><h2>${n.title||''}</h2><p>${n.excerpt||n.content||''}</p></article>`).join(''):'<div class="tcc-empty">No news has been published yet.</div>'}catch(_){x.innerHTML='<div class="tcc-empty">News will appear here when the backend is connected.</div>'}})()</script>
 <div class="tcc-more-backdrop" id="tccMoreBackdrop"></div>
 <div class="tcc-more-sheet" id="tccMoreSheet" aria-hidden="true">
-  <a href="community.html"><span class="more-icon">◆</span><span>Community</span></a>
+  <a href="/community"><span class="more-icon">◆</span><span>Community</span></a>
   <a href="/about"><span class="more-icon">◎</span><span>About</span></a>
-  <a href="news.html"><span class="more-icon">◈</span><span>TCC News</span></a>
-  <a href="prophetic-room.html"><span class="more-icon">✦</span><span>Prophetic Room</span></a>
-  <a href="live.html"><span class="more-icon">●</span><span>Live</span></a>
+  <a href="/news"><span class="more-icon">◈</span><span>TCC News</span></a>
+  <a href="/prophetic-room"><span class="more-icon">✦</span><span>Prophetic Room</span></a>
+  <a href="/live"><span class="more-icon">●</span><span>Live</span></a>
   <a href="/find-us"><span class="more-icon">⌖</span><span>Find Us / Directions</span></a>
 </div>
 <nav class="tcc-mobile-appbar" aria-label="Mobile navigation">
-  <a href="index.html"><span class="icon">⌂</span><span>Home</span></a>
-  <a href="community.html" class="active"><span class="icon">◆</span><span>Community</span></a>
+  <a href="/"><span class="icon">⌂</span><span>Home</span></a>
+  <a href="/community" class="active"><span class="icon">◆</span><span>Community</span></a>
   <a href="/contact"><span class="icon">✆</span><span>Contact</span></a>
   <a href="/give"><span class="icon">♡</span><span>Give</span></a>
   <button class="tcc-more-btn" id="tccMoreBtn" aria-expanded="false"><span class="icon">•••</span><span>More</span></button>

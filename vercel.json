@@ -105,6 +105,18 @@
     {
       "source": "/find-us",
       "destination": "/index.html"
+    },
+    {
+      "source": "/live",
+      "destination": "/live.html"
+    },
+    {
+      "source": "/news",
+      "destination": "/news.html"
+    },
+    {
+      "source": "/prophetic-room",
+      "destination": "/prophetic-room.html"
     }
   ],
   "crons": [

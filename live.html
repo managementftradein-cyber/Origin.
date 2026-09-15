@@ -124,31 +124,44 @@ body{overflow-x:hidden}
 </head><body>
 <div class="tcc-desktop-hub" aria-label="TCC special sections">
   <span class="hub-label">TCC Hub</span>
-  <a href="community.html">Community</a>
-  <a href="news.html">TCC News</a>
-  <a href="prophetic-room.html">Prophetic Room</a>
-  <a class="hub-live" href="live.html"><span class="live-dot"></span> Live</a>
+  <a href="/community">Community</a>
+  <a href="/news">TCC News</a>
+  <a href="/prophetic-room">Prophetic Room</a>
+  <a class="hub-live" href="/live"><span class="live-dot"></span> Live</a>
 </div>
 
-<nav class="tcc-feature-nav"><a href="index.html">TCC</a><a href="index.html">Home</a><a href="community.html">Community</a><a href="prophetic-room.html">Prophetic Room</a><a href="news.html">TCC News</a><a href="live.html"><span class="live-dot"></span> Live</a></nav><main class="tcc-feature"><section class="tcc-hero"><div class="tcc-kicker">TCC Broadcast</div><h1>Live</h1><p>When a TCC program is live, this page becomes the digital front row.</p></section><section class="tcc-wrap"><div class="tcc-layout"><div id="player" class="tcc-player"><div class="tcc-empty">Waiting for the next live program.</div></div><aside class="tcc-card"><div class="tcc-kicker">Now Live</div><h2 id="title">TCC Live</h2><p id="desc">No program is currently live.</p><div id="status" class="tcc-meta">OFFLINE</div></aside></div></section></main>
+<nav class="tcc-feature-nav"><a href="/">TCC</a><a href="/">Home</a><a href="/community">Community</a><a href="/prophetic-room">Prophetic Room</a><a href="/news">TCC News</a><a href="/live"><span class="live-dot"></span> Live</a></nav><main class="tcc-feature"><section class="tcc-hero"><div class="tcc-kicker">TCC Broadcast</div><h1>Live</h1><p>When a TCC program is live, this page becomes the digital front row.</p></section><section class="tcc-wrap"><div class="tcc-layout"><div id="player" class="tcc-player"><div class="tcc-empty">Waiting for the next live program.</div></div><aside class="tcc-card"><div class="tcc-kicker">Now Live</div><h2 id="title">TCC Live</h2><p id="desc">No program is currently live.</p><div id="status" class="tcc-meta">OFFLINE</div></aside></div></section></main>
 <style>.tcc-transition{position:fixed;inset:0;background:#080808;z-index:99999;display:grid;place-items:center;opacity:0;pointer-events:none;transition:.42s}.tcc-transition.active{opacity:1;pointer-events:auto}.tcc-transition span{color:var(--tcc-red);font:800 12px Inter;letter-spacing:.35em}</style>
 <script>
-(()=>{const o=document.createElement('div');o.className='tcc-transition';o.innerHTML='<span>TCC</span>';document.body.appendChild(o);
-document.querySelectorAll('a[href$=".html"]').forEach(a=>a.addEventListener('click',e=>{const h=a.getAttribute('href');if(!h||h.startsWith('http'))return;e.preventDefault();o.classList.add('active');setTimeout(()=>location.href=h,420)}));})();
+(()=>{
+  const o=document.createElement('div');o.className='tcc-transition';o.innerHTML='<span>TCC</span>';document.body.appendChild(o);
+  document.addEventListener('click',e=>{
+    const a=e.target.closest('a[href]');
+    if(!a) return;
+    const href=a.getAttribute('href')||'';
+    if(!href || href.startsWith('#') || href.startsWith('http') || href.startsWith('mailto:') || href.startsWith('tel:') || a.target==='_blank') return;
+    const u=new URL(href,location.href);
+    if(u.origin!==location.origin) return;
+    if(u.pathname===location.pathname && u.search===location.search && u.hash) return;
+    e.preventDefault();
+    o.classList.add('active');
+    setTimeout(()=>{ window.location.assign(u.pathname+u.search+u.hash); },180);
+  });
+})();
 </script>
 <script>(async()=>{try{let r=await fetch('/api/live-status'),d=await r.json();if(d.is_live){document.getElementById('player').innerHTML=`<div class="tcc-live-badge">● LIVE NOW</div><iframe src="${d.embed_url||d.stream_url}" style="width:100%;height:100%;border:0" allow="autoplay;fullscreen" allowfullscreen></iframe>`;document.getElementById('title').textContent=d.title||'TCC Live';document.getElementById('desc').textContent=d.description||'Join the live program now.';document.getElementById('status').textContent='LIVE NOW'}}catch(_){}})();setTimeout(()=>location.reload(),60000)</script>
 <div class="tcc-more-backdrop" id="tccMoreBackdrop"></div>
 <div class="tcc-more-sheet" id="tccMoreSheet" aria-hidden="true">
-  <a href="community.html"><span class="more-icon">◆</span><span>Community</span></a>
+  <a href="/community"><span class="more-icon">◆</span><span>Community</span></a>
   <a href="/about"><span class="more-icon">◎</span><span>About</span></a>
-  <a href="news.html"><span class="more-icon">◈</span><span>TCC News</span></a>
-  <a href="prophetic-room.html"><span class="more-icon">✦</span><span>Prophetic Room</span></a>
-  <a href="live.html"><span class="more-icon">●</span><span>Live</span></a>
+  <a href="/news"><span class="more-icon">◈</span><span>TCC News</span></a>
+  <a href="/prophetic-room"><span class="more-icon">✦</span><span>Prophetic Room</span></a>
+  <a href="/live"><span class="more-icon">●</span><span>Live</span></a>
   <a href="/find-us"><span class="more-icon">⌖</span><span>Find Us / Directions</span></a>
 </div>
 <nav class="tcc-mobile-appbar" aria-label="Mobile navigation">
-  <a href="index.html"><span class="icon">⌂</span><span>Home</span></a>
-  <a href="community.html" class="active"><span class="icon">◆</span><span>Community</span></a>
+  <a href="/"><span class="icon">⌂</span><span>Home</span></a>
+  <a href="/community" class="active"><span class="icon">◆</span><span>Community</span></a>
   <a href="/contact"><span class="icon">✆</span><span>Contact</span></a>
   <a href="/give"><span class="icon">♡</span><span>Give</span></a>
   <button class="tcc-more-btn" id="tccMoreBtn" aria-expanded="false"><span class="icon">•••</span><span>More</span></button>
