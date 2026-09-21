@@ -80,31 +80,31 @@
     },
     {
       "source": "/about",
-      "destination": "/index.html"
+      "destination": "/"
     },
     {
       "source": "/programs",
-      "destination": "/index.html"
+      "destination": "/"
     },
     {
       "source": "/partnership",
-      "destination": "/index.html"
+      "destination": "/"
     },
     {
       "source": "/college",
-      "destination": "/index.html"
+      "destination": "/"
     },
     {
       "source": "/contact",
-      "destination": "/index.html"
+      "destination": "/"
     },
     {
       "source": "/give",
-      "destination": "/index.html"
+      "destination": "/"
     },
     {
       "source": "/find-us",
-      "destination": "/index.html"
+      "destination": "/"
     },
     {
       "source": "/live",
