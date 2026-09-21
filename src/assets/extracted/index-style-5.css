@@ -1,0 +1,1 @@
+.tcc-transition{position:fixed;inset:0;background:#080808;z-index:99999;display:grid;place-items:center;opacity:0;pointer-events:none;transition:.42s}.tcc-transition.active{opacity:1;pointer-events:auto}.tcc-transition span{color:var(--tcc-red);font:800 12px Inter;letter-spacing:.35em}

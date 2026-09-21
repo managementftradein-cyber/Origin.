@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="robots" content="noindex,nofollow,noarchive"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TCC Department Head — Control Center</title>
+<link rel="stylesheet" href="/assets/extracted/index-style-1.css"></head>
+<body>
+<div class="app hidden" id="app">
+<header class="top"><div class="brand"><span class="brandmark">✦</span><span id="deptTitle">DEPARTMENT HEAD</span></div><div class="top-actions"><button class="btn" id="viewSite">View Site</button><button class="btn red" id="logout">Sign Out</button></div></header>
+
+<div class="notice">You can onboard applicants into <b id="deptName">your department</b> with a one-time invite link, and suspend or reinstate members of this department. Actions here only ever affect your own department.</div>
+
+<div id="deptMeetingBanner"></div>
+
+<div class="panel">
+<div class="head"><div><h2>Generate Invite Link</h2><p>Creates a unique, one-time link. It expires after 30 days or as soon as it's used.</p></div></div>
+<form class="form" id="inviteForm">
+<div class="field"><label>Applicant name (optional)</label><input name="applicant_name" placeholder="e.g. Sarah Johnson"></div>
+<div class="field"><label>Applicant email (optional, for your own reference)</label><input name="applicant_email" type="email" placeholder="applicant@email.com"></div>
+<button class="btn red" type="submit">Generate Link</button>
+</form>
+<p id="inviteMsg" style="font-size:12px;color:#999;margin-top:12px"></p>
+</div>
+
+<div class="panel">
+<div class="head"><div><h2>Invite Links</h2><p>Links you've generated for this department.</p></div></div>
+<div id="invitesTable"><div class="loading">Loading…</div></div>
+</div>
+
+<div class="panel">
+<div class="head"><div><h2>Department Members</h2><p>Members who joined through your invite links.</p></div></div>
+<div id="membersTable"><div class="loading">Loading…</div></div>
+</div>
+
+</div>
+<div id="toast" class="toast"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/admin-auth.js"></script>
+<script src="/dept-admin/app.js"></script>
+</body></html>
