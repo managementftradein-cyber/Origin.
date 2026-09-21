@@ -369,12 +369,21 @@ shell(`<section class="hero"><div class="hero-bg" id="heroBackground">${['hero-1
 <div class="hero-actions"><a class="btn red-btn" href="/about" data-route="/about">Discover Our Story</a><a class="btn outline" href="/programs" data-route="/programs">Explore Programs</a></div>
 <div class="hero-note"><div><span>WORSHIP</span><strong>Gather</strong></div><div><span>WORD</span><strong>Grow</strong></div><div><span>MISSION</span><strong>Go</strong></div></div>
 </div></section>
-<section class="section"><div class="wrap"><div class="section-head reveal"><div class="eyebrow">Our Foundation</div><h2>Everything points back to <span class="red">Christ.</span></h2><p>Our church is built around a simple conviction: Jesus is not one part of the church's life. He is the center of it.</p></div><div class="grid3">${[['01','Worship','We gather to honor Christ with wholehearted worship, prayer and thanksgiving.'],['02','The Word','We teach and live Scripture so faith becomes visible in everyday life.'],['03','Community','We walk together, carrying one another and building a family centered on Jesus.']].map(x=>`<article class="card reveal"><div class="num">${x[0]}</div><h3>${x[1]}</h3><p>${x[2]}</p><a href="/about" data-route="/about">Learn more →</a></article>`).join('')}</div></div></section>
+<section class="section dark message-section" id="message"><div class="wrap"><div class="section-head reveal"><div class="eyebrow">Our Message</div><h2>The simplicity in <span class="red">Christ.</span></h2><p>Our church is built around a simple conviction: Jesus is not one part of the church's life. He is the center of it.</p></div><div class="video-frame reveal"><video id="missionVideo" class="video-el" poster="/assets/mission-poster.jpg" preload="metadata" playsinline controlslist="nodownload"><source src="/assets/mission.mp4" type="video/mp4">Your browser does not support embedded video.</video><button class="video-play" id="missionPlay" type="button" aria-label="Play the message"><span class="vp-icon">&#9654;</span></button></div></div></section>
 <section class="section dark" id="gallery"><div class="wrap"><div class="section-head reveal"><div class="eyebrow">Moments</div><h2>Life together.</h2><p>Gatherings, worship, service and fellowship — moments that tell the story of a church family.</p></div><div class="gallery" id="homepageGallery">${['hero-1.jpg','hero-2.jpg','hero-3.jpg'].map((x,i)=>`<figure class="reveal"><img src="/assets/${x}" alt="Church gathering"><figcaption>${['Worship','Community','Mission'][i]}</figcaption></figure>`).join('')}</div></div></section>
 <section class="section"><div class="wrap"><div class="section-head reveal"><div class="eyebrow">Upcoming</div><h2>Come and be part of it.</h2></div>${data.events.map(eventCard).join('')}<div style="margin-top:35px"><a class="btn red-btn" href="/programs" data-route="/programs">See All Programs</a></div></div></section>
 <section class="section dark"><div class="wrap" style="display:flex;justify-content:space-between;align-items:center;gap:35px;flex-wrap:wrap"><div class="reveal"><div class="eyebrow">Take the next step</div><h2 class="serif" style="font-size:clamp(38px,5vw,65px);margin-top:15px">You belong here.</h2></div><a class="btn red-btn reveal" href="/contact" data-route="/contact">Plan a Visit</a></div></section>`);
 startHeroCycle(document.getElementById('heroBackground'),6);
+bindMissionVideo();
 loadEditableHome();
+}
+function bindMissionVideo(){
+ const v=document.getElementById('missionVideo'), b=document.getElementById('missionPlay');
+ if(!v||!b)return;
+ const reveal=()=>{v.setAttribute('controls','');b.classList.add('hidden')};
+ b.addEventListener('click',()=>{reveal();v.play().catch(()=>{v.setAttribute('controls','')})});
+ v.addEventListener('play',reveal);
+ v.addEventListener('ended',()=>{b.classList.remove('hidden');v.removeAttribute('controls')});
 }
 async function loadEditableHome(){
  try{
@@ -455,17 +464,54 @@ function formatLaunchDate(iso,tz){try{return new Intl.DateTimeFormat(undefined,{
 function startLaunchCountdown(settings){const el=document.getElementById('launchScreen');if(!el)return;const enabled=!!settings.launch_enabled&&!!settings.launch_date;if(!enabled){setLaunchVisible(false);return}const target=new Date(settings.launch_date).getTime();if(Number.isNaN(target)){setLaunchVisible(false);return}document.getElementById('launchTitle').textContent=settings.launch_title||'THE ORIGIN IS NEAR';document.getElementById('launchSubtitle').textContent=settings.launch_subtitle||'Christ at the centre. Everything else follows.';document.getElementById('launchCompleteTitle').textContent=settings.launch_complete_title||'WE ARE LIVE';document.getElementById('launchCompleteBody').textContent=settings.launch_complete_body||'Welcome to The Christocentric Church.';document.getElementById('launchDateLabel').textContent='Launching '+formatLaunchDate(settings.launch_date,settings.launch_timezone);if(settings.logo_url)document.getElementById('launchLogo').src=settings.logo_url;setLaunchVisible(true);launchState.shown=true;const tick=()=>{const diff=target-Date.now();if(diff<=0){document.getElementById('launchCountdownView').style.display='none';document.getElementById('launchLive').style.display='block';if(launchState.timer)clearInterval(launchState.timer);return}const total=Math.floor(diff/1000);document.getElementById('launchDays').textContent=String(Math.floor(total/86400)).padStart(2,'0');document.getElementById('launchHours').textContent=String(Math.floor(total%86400/3600)).padStart(2,'0');document.getElementById('launchMinutes').textContent=String(Math.floor(total%3600/60)).padStart(2,'0');document.getElementById('launchSeconds').textContent=String(total%60).padStart(2,'0')};tick();if(launchState.timer)clearInterval(launchState.timer);launchState.timer=setInterval(tick,1000)}
 async function loadLaunchGate(){try{const r=await fetch('/api/site-content',{cache:'no-store'});if(!r.ok)return false;const d=await r.json();const s=d.settings||{};startLaunchCountdown(s);return !!s.launch_enabled&&!!s.launch_date}catch(e){console.warn('Launch settings unavailable',e);return false}}
 const pages={'/':home,'/about':about,'/programs':programs,'/partnership':partnership,'/college':college,'/give':give,'/contact':contact,'/find-us':findUs};
-async function route(path,animate=true){path=path.split('?')[0].replace(/\/+$/,'')||'/';if(!pages[path])path='/';if(animate){transition.classList.remove('go');void transition.offsetWidth;transition.classList.add('go');await new Promise(r=>setTimeout(r,330))}pages[path]();document.querySelectorAll('[data-route]').forEach(a=>a.classList.toggle('active',a.dataset.route===path));history.replaceState({},'',path);nav.classList.remove('open');}
-document.addEventListener('click',e=>{const a=e.target.closest('a[data-route]');if(!a)return;e.preventDefault();route(a.dataset.route,true)});
-window.addEventListener('popstate',()=>route(location.pathname,false));
+async function route(path,animate=true,push=true,hash=''){
+ path=path.split('?')[0].replace(/\/+$/,'')||'/';
+ if(!pages[path])path='/';
+ if(animate){transition.classList.remove('go');void transition.offsetWidth;transition.classList.add('go');await new Promise(r=>setTimeout(r,330))}
+ pages[path]();
+ document.querySelectorAll('[data-route]').forEach(a=>a.classList.toggle('active',a.dataset.route===path));
+ // push a real history entry so Back/Forward work; replace only on initial load and popstate
+ if(push && location.pathname!==path){history.pushState({path},'',path)}
+ else{history.replaceState({path},'',path)}
+ if(hash){const t=document.querySelector(hash);if(t){t.scrollIntoView({behavior:'smooth',block:'start'});nav.classList.remove('open');return}}
+ window.scrollTo(0,0);
+ nav.classList.remove('open');
+}
+document.addEventListener('click',e=>{
+ const a=e.target.closest('a[data-route]');
+ if(!a)return;
+ if(e.defaultPrevented||e.button!==0||e.metaKey||e.ctrlKey||e.shiftKey||e.altKey)return;
+ e.preventDefault();
+ let hash='';
+ try{hash=new URL(a.getAttribute('href'),location.origin).hash||''}catch(_){}
+ route(a.dataset.route,true,true,hash);
+});
+window.addEventListener('popstate',()=>route(location.pathname,false,false));
 menu.onclick=()=>nav.classList.toggle('open');
 window.addEventListener('scroll',()=>header.classList.toggle('scrolled',scrollY>40),{passive:true});
 window.addEventListener('load',()=>setTimeout(()=>loader.classList.add('hide'),500));
 const initialRoute=new URLSearchParams(location.search).get('route');
-loadLaunchGate().then(()=>route(initialRoute||location.pathname,false));
+loadLaunchGate().then(()=>route(initialRoute||location.pathname,false,false));
 loadLiveCollections();
 </script>
 
+<style id="tcc-message-video">
+.message-section .section-head{max-width:760px;margin-bottom:46px}
+.video-frame{position:relative;max-width:1000px;margin:0 auto;border-radius:20px;overflow:hidden;background:#000;
+ border:1px solid var(--line);box-shadow:0 40px 110px rgba(0,0,0,.55)}
+.video-frame:before{content:"";position:absolute;inset:0;border-radius:20px;pointer-events:none;z-index:3;
+ box-shadow:inset 0 0 0 1px rgba(var(--red-rgb),.18)}
+.video-el{display:block;width:100%;height:auto;aspect-ratio:16/9;object-fit:cover;background:#000}
+.video-play{position:absolute;inset:0;z-index:4;display:grid;place-items:center;width:100%;height:100%;
+ border:0;cursor:pointer;background:linear-gradient(180deg,rgba(7,7,6,.18),rgba(7,7,6,.62));transition:.35s}
+.video-play:hover{background:linear-gradient(180deg,rgba(7,7,6,.10),rgba(7,7,6,.50))}
+.video-play.hidden{opacity:0;pointer-events:none}
+.vp-icon{width:88px;height:88px;border-radius:50%;display:grid;place-items:center;font-size:26px;line-height:1;
+ color:var(--black);background:linear-gradient(145deg,var(--red2),var(--red));
+ box-shadow:0 18px 55px rgba(var(--red-rgb),.4);padding-left:5px;transition:.35s}
+.video-play:hover .vp-icon{transform:scale(1.07)}
+@media(max-width:620px){.vp-icon{width:66px;height:66px;font-size:20px}.video-frame{border-radius:14px}}
+</style>
 <style>.tcc-transition{position:fixed;inset:0;background:#080808;z-index:99999;display:grid;place-items:center;opacity:0;pointer-events:none;transition:.42s}.tcc-transition.active{opacity:1;pointer-events:auto}.tcc-transition span{color:var(--tcc-red);font:800 12px Inter;letter-spacing:.35em}</style>
 <script>
 (()=>{
@@ -496,8 +542,8 @@ loadLiveCollections();
 <nav class="tcc-mobile-appbar" aria-label="Mobile navigation">
   <a href="/" data-route="/"><span class="icon">⌂</span><span>Home</span></a>
   <a href="/community"><span class="icon">◆</span><span>Community</span></a>
-  <a href="/index.html?route=%2Fcontact"><span class="icon">✆</span><span>Contact</span></a>
-  <a href="/index.html?route=%2Fgive"><span class="icon">♡</span><span>Give</span></a>
+  <a href="/contact" data-route="/contact"><span class="icon">✆</span><span>Contact</span></a>
+  <a href="/give" data-route="/give"><span class="icon">♡</span><span>Give</span></a>
   <button class="tcc-more-btn" id="tccMoreBtn" aria-expanded="false"><span class="icon">•••</span><span>More</span></button>
 </nav>
 
@@ -515,12 +561,16 @@ loadLiveCollections();
     backdrop.addEventListener('click',()=>toggle(false));
     sheet.querySelectorAll('a').forEach(a=>a.addEventListener('click',()=>toggle(false)));
   }
-  const current=(location.pathname.split('/').pop()||'index.html').toLowerCase();
-  document.querySelectorAll('.tcc-mobile-appbar a').forEach(a=>{
-    const href=(a.getAttribute('href')||'').split('#')[0].toLowerCase();
-    if(href===current) a.classList.add('active');
-    else a.classList.remove('active');
-  });
+  const markActive=()=>{
+    const current=(location.pathname.replace(/\/+$/,'')||'/').toLowerCase();
+    document.querySelectorAll('.tcc-mobile-appbar a').forEach(a=>{
+      const href=((a.getAttribute('href')||'').split('#')[0].replace(/\/+$/,'')||'/').toLowerCase();
+      a.classList.toggle('active',href===current);
+    });
+  };
+  markActive();
+  window.addEventListener('popstate',markActive);
+  document.addEventListener('click',e=>{if(e.target.closest('a[data-route]'))setTimeout(markActive,400)});
 })();
 </script>
 <script src="/accent-color.js" defer></script>
