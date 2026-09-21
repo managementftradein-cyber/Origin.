@@ -330,7 +330,7 @@ shell(`<section class="hero"><div class="hero-bg" id="heroBackground">${['hero-1
 <div class="hero-actions"><a class="btn red-btn" href="/about" data-route="/about">Discover Our Story</a><a class="btn outline" href="/programs" data-route="/programs">Explore Programs</a></div>
 <div class="hero-note"><div><span>WORSHIP</span><strong>Gather</strong></div><div><span>WORD</span><strong>Grow</strong></div><div><span>MISSION</span><strong>Go</strong></div></div>
 </div></section>
-<section class="section dark message-section" id="message"><div class="wrap"><div class="section-head reveal"><div class="eyebrow">Our Message</div><h2>The simplicity in <span class="red">Christ.</span></h2><p>Our church is built around a simple conviction: Jesus is not one part of the church's life. He is the center of it.</p></div><div class="video-frame reveal"><video id="missionVideo" class="video-el" poster="/assets/mission-poster.jpg" preload="metadata" playsinline controlslist="nodownload"><source src="/assets/mission.mp4" type="video/mp4">Your browser does not support embedded video.</video><button class="video-play" id="missionPlay" type="button" aria-label="Play the message"><span class="vp-icon">&#9654;</span></button></div></div></section>
+<section class="section dark message-section" id="message"><div class="wrap"><div class="section-head reveal"><div class="eyebrow">Our Message</div><h2>The simplicity in <span class="red">Christ.</span></h2><p>Our church is built around a simple conviction: Jesus is not one part of the church's life. He is the center of it.</p></div><div class="video-frame reveal"><video id="missionVideo" class="video-el" poster="/assets/mission-poster.jpg" preload="auto" autoplay muted playsinline controlslist="nodownload"><source src="/assets/mission.mp4" type="video/mp4">Your browser does not support embedded video.</video><button class="video-play" id="missionPlay" type="button" aria-label="Play the message"><span class="vp-icon">&#9654;</span></button><button class="video-unmute hidden" id="missionUnmute" type="button" aria-label="Unmute the message"><span class="vu-icon">&#128264;</span><span class="vu-label">Tap for sound</span></button></div></div></section>
 <section class="section dark" id="gallery"><div class="wrap"><div class="section-head reveal"><div class="eyebrow">Moments</div><h2>Life together.</h2><p>Gatherings, worship, service and fellowship — moments that tell the story of a church family.</p></div><div class="gallery" id="homepageGallery">${['hero-1.jpg','hero-2.jpg','hero-3.jpg'].map((x,i)=>`<figure class="reveal"><img src="/assets/${x}" alt="Church gathering"><figcaption>${['Worship','Community','Mission'][i]}</figcaption></figure>`).join('')}</div></div></section>
 <section class="section"><div class="wrap"><div class="section-head reveal"><div class="eyebrow">Upcoming</div><h2>Come and be part of it.</h2></div>${data.events.map(eventCard).join('')}<div style="margin-top:35px"><a class="btn red-btn" href="/programs" data-route="/programs">See All Programs</a></div></div></section>
 <section class="section dark"><div class="wrap" style="display:flex;justify-content:space-between;align-items:center;gap:35px;flex-wrap:wrap"><div class="reveal"><div class="eyebrow">Take the next step</div><h2 class="serif" style="font-size:clamp(38px,5vw,65px);margin-top:15px">You belong here.</h2></div><a class="btn red-btn reveal" href="/contact" data-route="/contact">Plan a Visit</a></div></section>`);
@@ -339,12 +339,19 @@ bindMissionVideo();
 loadEditableHome();
 }
 function bindMissionVideo(){
- const v=document.getElementById('missionVideo'), b=document.getElementById('missionPlay');
+ const v=document.getElementById('missionVideo'), b=document.getElementById('missionPlay'), u=document.getElementById('missionUnmute');
  if(!v||!b)return;
- const reveal=()=>{v.setAttribute('controls','');b.classList.add('hidden')};
- b.addEventListener('click',()=>{reveal();v.play().catch(()=>{v.setAttribute('controls','')})});
+ const reveal=()=>{v.setAttribute('controls','');b.classList.add('hidden');if(u&&v.muted)u.classList.remove('hidden')};
+ b.addEventListener('click',()=>{reveal();v.muted=false;u?.classList.add('hidden');v.play().catch(()=>{v.setAttribute('controls','')})});
  v.addEventListener('play',reveal);
- v.addEventListener('ended',()=>{b.classList.remove('hidden');v.removeAttribute('controls')});
+ v.addEventListener('ended',()=>{b.classList.remove('hidden');v.removeAttribute('controls');u?.classList.add('hidden')});
+ if(u){
+  u.addEventListener('click',()=>{v.muted=false;u.classList.add('hidden')});
+  v.addEventListener('volumechange',()=>{if(!v.muted)u.classList.add('hidden')});
+ }
+ // Some browsers only honor a programmatic play() call, not the autoplay attribute alone.
+ const p=v.play();
+ if(p&&p.catch)p.catch(()=>{/* autoplay blocked — poster + play button stay visible as the fallback */});
 }
 async function loadEditableHome(){
  try{
@@ -469,6 +476,14 @@ loadLiveCollections();
  border:0;cursor:pointer;background:linear-gradient(180deg,rgba(7,7,6,.18),rgba(7,7,6,.62));transition:.35s}
 .video-play:hover{background:linear-gradient(180deg,rgba(7,7,6,.10),rgba(7,7,6,.50))}
 .video-play.hidden{opacity:0;pointer-events:none}
+.video-unmute{position:absolute;right:16px;bottom:16px;z-index:5;display:flex;align-items:center;gap:8px;
+ padding:10px 16px;border-radius:999px;border:1px solid rgba(var(--red-rgb),.4);cursor:pointer;
+ background:rgba(7,7,6,.72);backdrop-filter:blur(6px);color:var(--cream);font:600 12px Inter,sans-serif;
+ letter-spacing:.04em;transition:.25s}
+.video-unmute:hover{background:rgba(7,7,6,.9);border-color:var(--red)}
+.video-unmute.hidden{opacity:0;pointer-events:none;transform:translateY(6px)}
+.video-unmute .vu-icon{font-size:15px;line-height:1}
+@media(max-width:620px){.video-unmute .vu-label{display:none}.video-unmute{padding:11px;border-radius:50%}}
 .vp-icon{width:88px;height:88px;border-radius:50%;display:grid;place-items:center;font-size:26px;line-height:1;
  color:var(--black);background:linear-gradient(145deg,var(--red2),var(--red));
  box-shadow:0 18px 55px rgba(var(--red-rgb),.4);padding-left:5px;transition:.35s}
