@@ -52,7 +52,7 @@ function showLogin(message=''){
  x.innerHTML=`<div class="login-card"><h1 class="login-brand">TCC ADMIN</h1><p class="login-sub">Sign in to the Christocentric Church control center.</p>
  <form id="tccLoginForm"><div class="field"><label>Email</label><input name="email" type="email" required autocomplete="username" placeholder="Admin email"></div>
  <div class="field"><label>Password</label><input name="password" type="password" required autocomplete="current-password" placeholder="Password"></div>
- <button class="btn red" type="submit">SIGN IN</button><div id="tccLoginMsg" style="color:#d9c991;margin-top:12px;line-height:1.5"></div></form></div>`;
+ <button class="btn red" type="submit">SIGN IN</button><div id="tccLoginMsg" style="color:#A9C5FF;margin-top:12px;line-height:1.5"></div></form></div>`;
  document.body.appendChild(x);
  $('#tccLoginForm').onsubmit=async e=>{
   e.preventDefault();const f=e.currentTarget,b=f.querySelector('button');b.disabled=true;b.textContent='SIGNING IN…';
