@@ -85,3 +85,65 @@
 /* feature pages had the browser default 8px body margin (white edge around the page) */
 body{margin:0}
 .tcc-desktop-hub .hub-label,.tcc-desktop-hub .hub-live{color:var(--tcc-red2,#7AA7FF)}
+
+/* ==========================================================================
+   Brand name: "CHURCH" sits centred on its own line under "THE CHRISTOCENTRIC"
+   ========================================================================== */
+.brand span,.tcc-brandbar-brand strong{display:block;text-align:center;line-height:1.12}
+.brand span b{white-space:nowrap}
+.brand span em,.tcc-brandbar-brand strong em{
+  display:block;font-style:normal;font-weight:500;
+  font-size:.72em;letter-spacing:.46em;padding-left:.46em;  /* padding balances the trailing letter-space so it is truly centred */
+  margin-top:3px;color:var(--tcc-red2,#7AA7FF);
+}
+.tcc-brandbar-brand strong{white-space:normal}
+
+/* ==========================================================================
+   Page heroes: TCC logo watermark + shadow instead of a flat black block
+   Applies to: .hero (home), .page-hero (About, Programs, Partnership,
+   College, Give, Contact) and .tcc-hero (Community, Live, News, Prophetic Room)
+   ========================================================================== */
+.page-hero,.tcc-hero,.hero{
+  position:relative;overflow:hidden;isolation:isolate;
+  background:
+    radial-gradient(ellipse 70% 90% at 50% -10%,rgba(var(--tcc-red-rgb,21,94,239),.34),transparent 62%),
+    radial-gradient(ellipse 60% 80% at 100% 110%,rgba(var(--crimson-rgb,193,18,31),.28),transparent 62%),
+    linear-gradient(165deg,#0d1838 0%,#0a1024 48%,#16090f 100%);
+}
+/* the watermark itself: the emblem, large and faint, with a deep soft shadow */
+.page-hero:before,.tcc-hero:before,.hero:before{
+  content:"";position:absolute;z-index:0;pointer-events:none;
+  width:min(560px,78vw);height:auto;aspect-ratio:846/727;
+  left:auto;bottom:auto;border-radius:0;
+  right:7%;top:50%;transform:translateY(-50%);
+  background:url(/assets/logo-emblem.png) center/contain no-repeat;
+  opacity:.2;
+  filter:drop-shadow(0 28px 44px rgba(0,0,0,.75)) drop-shadow(0 0 70px rgba(var(--tcc-red-rgb,21,94,239),.4));
+}
+/* centred heroes (feature pages): watermark sits behind the headline */
+.tcc-hero:before{right:auto;left:50%;transform:translate(-50%,-50%);opacity:.14}
+/* a soft shadow pooling under the logo, plus a gentle vignette at the edges */
+.page-hero:after,.tcc-hero:after,.hero:after{
+  content:"";position:absolute;inset:0;z-index:0;pointer-events:none;
+  width:auto;height:auto;border-radius:0;left:0;top:0;right:0;bottom:0;
+  background:
+    radial-gradient(ellipse 46% 40% at 78% 62%,rgba(0,0,0,.45),transparent 70%),
+    radial-gradient(ellipse at center,transparent 45%,rgba(0,0,0,.45) 100%);
+}
+.tcc-hero:after{
+  background:
+    radial-gradient(ellipse 42% 36% at 50% 66%,rgba(0,0,0,.42),transparent 70%),
+    radial-gradient(ellipse at center,transparent 45%,rgba(0,0,0,.45) 100%);
+}
+/* home hero keeps its photos/video; the watermark sits above them, under the text */
+.hero:before{z-index:1;opacity:.16}
+.hero:after{z-index:1}
+.hero-bg{z-index:0}
+.page-hero>*,.tcc-hero>*,.hero>.container,.hero-content{position:relative;z-index:2}
+@media (max-width:760px){
+  .page-hero:before,.hero:before{right:50%;transform:translate(50%,-50%);width:min(420px,80vw);opacity:.12}
+  .tcc-hero:before{width:min(420px,80vw);opacity:.11}
+}
+
+/* the brand bar is sticky (not fixed), so no 72px black strip is needed above the hero */
+.tcc-feature{padding-top:0}
