@@ -1,0 +1,87 @@
+/* ==========================================================================
+   TCC scroll effects + shared brand bar
+   Loaded by: index, community, live, news, prophetic-room
+   Motion values are set per element by tcc-fx.js through CSS variables:
+     --fx-x / --fx-y   start offset      --fx-s  start scale
+     --fx-r            start rotation    --fx-clip  clip-path start (photos)
+     --fx-dur / --fx-ease / --fx-delay   timing
+   Uses CSS animations (not transitions) with fill-mode "backwards", so:
+     - nothing is left over after the animation, hover transforms keep working
+     - it is not affected by other rules that set `transition`
+   ========================================================================== */
+
+/* Hidden until the script marks it visible. Only applies once JS has tagged
+   the element, so with JS disabled everything simply shows. */
+[data-fx]:not(.fx-in){opacity:0}
+
+[data-fx].fx-in{
+  opacity:1;
+  animation:fx-slide var(--fx-dur,.9s) var(--fx-ease,cubic-bezier(.22,1,.36,1)) var(--fx-delay,0s) backwards;
+  will-change:transform,opacity;
+}
+[data-fx-kind="photo"].fx-in{
+  animation-name:fx-slide,fx-wipe;
+  animation-duration:var(--fx-dur,.9s),calc(var(--fx-dur,.9s) * 1.15);
+}
+
+@keyframes fx-slide{
+  from{
+    opacity:0;
+    transform:translate3d(var(--fx-x,0),var(--fx-y,40px),0) scale(var(--fx-s,1)) rotate(var(--fx-r,0deg));
+  }
+  to{opacity:1;transform:translate3d(0,0,0) scale(1) rotate(0deg)}
+}
+@keyframes fx-wipe{
+  from{clip-path:var(--fx-clip,inset(0 100% 0 0))}
+  to{clip-path:inset(0 0 0 0)}
+}
+
+/* images revealed inside a wiped frame also settle from a slight zoom */
+[data-fx-kind="photo"].fx-in img{animation:fx-zoom 1.3s cubic-bezier(.22,1,.36,1) backwards}
+@keyframes fx-zoom{from{transform:scale(1.18)}to{transform:scale(1)}}
+
+
+
+@media (prefers-reduced-motion:reduce){
+  [data-fx]:not(.fx-in){opacity:1}
+  [data-fx].fx-in,[data-fx-kind="photo"].fx-in,[data-fx-kind="photo"].fx-in img{animation:none!important}
+}
+
+/* ==========================================================================
+   Brand bar (logo + church name) used on the feature pages
+   ========================================================================== */
+.tcc-brandbar{
+  position:sticky;top:0;z-index:10000;
+  display:flex;align-items:center;justify-content:space-between;gap:16px;
+  min-height:84px;padding:10px 32px;
+  background:rgba(9,9,9,.94);backdrop-filter:blur(18px);
+  border-bottom:1px solid rgba(var(--tcc-red-rgb,21,94,239),.35);
+  box-shadow:0 8px 30px rgba(0,0,0,.25);
+}
+.tcc-brandbar::after{ /* thin blue → red line under the bar */
+  content:"";position:absolute;left:0;right:0;bottom:-1px;height:2px;
+  background:linear-gradient(90deg,var(--tcc-red,#155EEF),var(--crimson,#C1121F));
+}
+.tcc-brandbar-brand{display:flex;align-items:center;gap:16px;min-width:0;color:#fff;text-decoration:none}
+.tcc-brandbar-brand img{width:64px;height:64px;object-fit:contain;flex:0 0 64px}
+.tcc-brandbar-brand strong{
+  font:600 22px Georgia,"Playfair Display",serif;letter-spacing:.05em;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.tcc-brandbar-title{
+  font:700 11px Inter,sans-serif;letter-spacing:.18em;text-transform:uppercase;
+  color:var(--tcc-red2,#7AA7FF);white-space:nowrap;
+}
+@media (max-width:900px){
+  .tcc-brandbar{min-height:72px;padding:8px 16px}
+  .tcc-brandbar-brand{gap:11px}
+  .tcc-brandbar-brand img{width:52px;height:52px;flex-basis:52px}
+  .tcc-brandbar-brand strong{font-size:14px;letter-spacing:.04em}
+  .tcc-brandbar-title{font-size:9px;letter-spacing:.14em}
+}
+
+[data-fx].fx-done{will-change:auto}
+
+/* feature pages had the browser default 8px body margin (white edge around the page) */
+body{margin:0}
+.tcc-desktop-hub .hub-label,.tcc-desktop-hub .hub-live{color:var(--tcc-red2,#7AA7FF)}

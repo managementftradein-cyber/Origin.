@@ -14,9 +14,9 @@
 .tcc-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
 .tcc-card{background:#111;border:1px solid rgba(var(--tcc-red-rgb),.18);padding:30px;transition:.5s cubic-bezier(.22,1,.36,1)}
 .tcc-card:hover{transform:translateY(-8px);border-color:var(--tcc-red)}
-.tcc-card h2,.tcc-card h3{color:#e5c873}
+.tcc-card h2,.tcc-card h3{color:#7AA7FF}
 .tcc-card p{color:#aaa;line-height:1.7}
-.tcc-btn{display:inline-flex;padding:14px 22px;margin-top:20px;background:var(--tcc-red);color:#080808;text-decoration:none;font-weight:800;border:0;cursor:pointer}
+.tcc-btn{display:inline-flex;padding:14px 22px;margin-top:20px;background:var(--crimson,#C1121F);color:#fff;text-decoration:none;font-weight:800;border:0;cursor:pointer}
 .tcc-layout{display:grid;grid-template-columns:1.5fr .8fr;gap:24px}
 .tcc-player{background:#000;aspect-ratio:16/9;border:1px solid rgba(var(--tcc-red-rgb),.25);display:grid;place-items:center;position:relative}
 .tcc-live-badge{position:absolute;top:16px;left:16px;background:#8d2026;color:#fff;padding:7px 11px;font:800 10px Inter;letter-spacing:.15em}
@@ -31,7 +31,7 @@
 </style>
 
 <style id="tcc-v3-mobile-system">
-:root{--tcc-red:#d9b65d;--tcc-red-rgb:217,182,93;--tcc-black:#090909;--tcc-soft:#f4e7bf}
+:root{--tcc-red2:#7AA7FF;--tcc-red:#155EEF;--tcc-red-rgb:21,94,239;--crimson:#C1121F;--crimson-rgb:193,18,31;--crimson-hover:#E01B2B;--silver:#C0C0C0;--tcc-black:#090909;--tcc-soft:#DCE8FF}
 html{scroll-behavior:smooth}
 body{overflow-x:hidden}
 @media (max-width:900px){
@@ -106,7 +106,7 @@ body{overflow-x:hidden}
     font:700 9px Inter,sans-serif;letter-spacing:.09em;text-transform:uppercase;
     transition:.28s
   }
-  .tcc-desktop-hub a:hover{color:#090909;background:var(--tcc-red);border-color:var(--tcc-red)}
+  .tcc-desktop-hub a:hover{color:#fff;background:var(--tcc-red);border-color:var(--tcc-red)}
   .tcc-desktop-hub .hub-live{color:var(--tcc-red)}
 }
 
@@ -114,14 +114,15 @@ body{overflow-x:hidden}
 .tcc-map-wrap{max-width:1180px;margin:auto;padding:75px 24px}
 .tcc-map-grid{display:grid;grid-template-columns:.72fr 1.28fr;gap:24px;align-items:stretch}
 .tcc-map-card{background:#111;border:1px solid rgba(var(--tcc-red-rgb),.18);padding:32px}
-.tcc-map-card h2{color:#e5c873}
+.tcc-map-card h2{color:#7AA7FF}
 .tcc-map-address{color:#aaa;line-height:1.7}
-.tcc-map-btn{display:inline-flex;align-items:center;gap:9px;margin-top:20px;padding:14px 20px;background:var(--tcc-red);color:#080808;text-decoration:none;font:800 11px Inter,sans-serif;letter-spacing:.08em;text-transform:uppercase}
+.tcc-map-btn{display:inline-flex;align-items:center;gap:9px;margin-top:20px;padding:14px 20px;background:var(--crimson,#C1121F);color:#fff;text-decoration:none;font:800 11px Inter,sans-serif;letter-spacing:.08em;text-transform:uppercase}
 .tcc-map-frame{min-height:390px;background:#050505;border:1px solid rgba(var(--tcc-red-rgb),.18);overflow:hidden}
 .tcc-map-frame iframe{width:100%;height:100%;min-height:390px;border:0;display:block}
 @media(max-width:900px){.tcc-map-grid{grid-template-columns:1fr}.tcc-map-frame,.tcc-map-frame iframe{min-height:300px}}
 </style>
-</head><body>
+<link rel="stylesheet" href="/tcc-fx.css"><style>.tcc-kicker,.tcc-meta,.tcc-brandbar-title{color:var(--tcc-red2,#7AA7FF)}</style></head><body>
+<header class="tcc-brandbar"><a class="tcc-brandbar-brand" href="/"><img src="/assets/logo-emblem.png" alt="The Christocentric Church logo"><strong>THE CHRISTOCENTRIC CHURCH</strong></a><span class="tcc-brandbar-title">TCC News</span></header>
 <div class="tcc-desktop-hub" aria-label="TCC special sections">
   <span class="hub-label">TCC Hub</span>
   <a href="/community">Community</a>
@@ -190,4 +191,5 @@ body{overflow-x:hidden}
 })();
 </script>
 <script src="/accent-color.js" defer></script>
+<script src="/tcc-fx.js" defer></script>
 </body></html>
