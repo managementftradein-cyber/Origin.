@@ -131,7 +131,7 @@ body{overflow-x:hidden}
   <a class="hub-live" href="/live"><span class="live-dot"></span> Live</a>
 </div>
 
-<nav class="tcc-feature-nav"><a href="/">TCC</a><a href="/">Home</a><a href="/community">Community</a><a href="/prophetic-room">Prophetic Room</a><a href="/news">TCC News</a><a href="/live"><span class="live-dot"></span> Live</a></nav><main class="tcc-feature"><section class="tcc-hero"><div class="tcc-kicker">TCC Broadcast</div><h1>Live</h1><p>When a TCC program is live, this page becomes the digital front row.</p></section><section class="tcc-wrap"><div class="tcc-layout"><div id="player" class="tcc-player"><div class="tcc-empty">Waiting for the next live program.</div></div><aside class="tcc-card"><div class="tcc-kicker">Now Live</div><h2 id="title">TCC Live</h2><p id="desc">No program is currently live.</p><div id="status" class="tcc-meta">OFFLINE</div></aside></div></section></main>
+<nav class="tcc-feature-nav"><a href="/">TCC</a><a href="/">Home</a><a href="/community">Community</a><a href="/prophetic-room">Prophetic Room</a><a href="/news">TCC News</a><a href="/live"><span class="live-dot"></span> Live</a></nav><main class="tcc-feature"><section class="tcc-hero"><div class="tcc-kicker">TCC Broadcast</div><h1>Live</h1><p>When a TCC program is live, this page becomes the digital front row.</p></section><section class="tcc-wrap"><div class="tcc-layout"><div id="player" class="tcc-player"><div class="tcc-empty">Waiting for the next live program.</div></div><aside class="tcc-card"><div class="tcc-kicker">Now Live</div><h2 id="title">TCC Live</h2><p id="desc">No program is currently live.</p><div id="status" class="tcc-meta">OFFLINE</div><a id="watchLink" class="tcc-live-open" target="_blank" rel="noopener noreferrer" hidden></a><div id="liveNotice" class="tcc-live-notice" hidden></div></aside></div></section></main>
 <style>.tcc-transition{position:fixed;inset:0;background:#080808;z-index:99999;display:grid;place-items:center;opacity:0;pointer-events:none;transition:.42s}.tcc-transition.active{opacity:1;pointer-events:auto}.tcc-transition span{color:var(--tcc-red);font:800 12px Inter;letter-spacing:.35em}</style>
 <script>
 (()=>{
@@ -150,7 +150,52 @@ body{overflow-x:hidden}
   });
 })();
 </script>
-<script>(async()=>{try{let r=await fetch('/api/live-status'),d=await r.json();if(d.is_live){document.getElementById('player').innerHTML=`<div class="tcc-live-badge">● LIVE NOW</div><iframe src="${d.embed_url||d.stream_url}" style="width:100%;height:100%;border:0" allow="autoplay;fullscreen" allowfullscreen></iframe>`;document.getElementById('title').textContent=d.title||'TCC Live';document.getElementById('desc').textContent=d.description||'Join the live program now.';document.getElementById('status').textContent='LIVE NOW'}}catch(_){}})();setTimeout(()=>location.reload(),60000)</script>
+<script src="/tcc-live.js"></script>
+<script>
+/* Live page: paste a YouTube / Facebook / Vimeo / Twitch link in Admin → Live Control and it plays right here. */
+(function(){
+  var box=document.getElementById('player'),titleEl=document.getElementById('title'),descEl=document.getElementById('desc'),
+      statusEl=document.getElementById('status'),openEl=document.getElementById('watchLink'),noticeEl=document.getElementById('liveNotice');
+  var shown=null,playing=false,lastSig='',pending=null;
+
+  function meta(d,res){
+    var live=!!d.is_live;
+    titleEl.textContent=d.title||(live?'TCC Live':(res?'Latest broadcast':'TCC Live'));
+    descEl.textContent=d.description||(live?'Join the live program now.':(res?'Watch the most recent broadcast.':'No program is currently live.'));
+    statusEl.textContent=live?'LIVE NOW':(res?'REPLAY':'OFFLINE');
+    if(res&&res.watch){openEl.href=res.watch;openEl.textContent='Open on '+res.provider+' \u2197';openEl.hidden=false}else{openEl.hidden=true}
+  }
+  function render(d,res){
+    shown=res;playing=false;pending=null;noticeEl.hidden=true;meta(d,res);
+    TCCLive.mount(box,res,{isLive:!!d.is_live,title:titleEl.textContent,onPlay:function(){playing=true}});
+  }
+  function apply(d){
+    var res=TCCLive.pick(d),key=res?res.key:'';
+    var sig=[!!d.is_live,key,d.title||'',d.description||''].join('|');
+    if(sig===lastSig)return;
+    if(playing&&shown&&key!==shown.key){ /* never interrupt someone who is watching */
+      pending=d;noticeEl.textContent='A new broadcast is available. ';
+      var b=document.createElement('button');b.type='button';b.textContent='Switch now';
+      b.onclick=function(){lastSig=sig;render(pending,res)};
+      noticeEl.appendChild(b);noticeEl.hidden=false;return;
+    }
+    lastSig=sig;
+    if(playing&&shown&&key===shown.key){ /* same stream still playing: only refresh the text + badge */
+      meta(d,res);
+      var bd=box.querySelector('.tcc-live-badge');
+      if(bd){bd.className='tcc-live-badge '+(d.is_live?'on':'off');bd.textContent=d.is_live?'LIVE NOW':'LATEST BROADCAST'}
+      return;
+    }
+    render(d,res);
+  }
+  async function load(){
+    try{var r=await fetch('/api/live-status',{cache:'no-store'});if(!r.ok)return;apply(await r.json())}catch(_){}
+  }
+  load();
+  setInterval(function(){if(!document.hidden)load()},30000);
+  document.addEventListener('visibilitychange',function(){if(!document.hidden)load()});
+})();
+</script>
 <div class="tcc-more-backdrop" id="tccMoreBackdrop"></div>
 <div class="tcc-more-sheet" id="tccMoreSheet" aria-hidden="true">
   <a href="/community"><span class="more-icon">◆</span><span>Community</span></a>
