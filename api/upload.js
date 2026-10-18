@@ -27,7 +27,7 @@ module.exports = async (req, res) => {
     await requireAdmin(req);
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-    const { contentType, dataBase64, caption, category } = req.body || {};
+    const { contentType, dataBase64, caption, category, purpose } = req.body || {};
     const isVideo = Object.prototype.hasOwnProperty.call(ALLOWED_VIDEO, contentType);
     const ext = isVideo ? ALLOWED_VIDEO[contentType] : ALLOWED_IMAGE[contentType];
     if (!ext) return res.status(400).json({ error: 'Unsupported file type. Use JPG, PNG, WEBP, GIF, MP4 or WEBM.' });
@@ -49,6 +49,11 @@ module.exports = async (req, res) => {
     if (up.error) throw up.error;
 
     const pub = db.storage.from(BUCKET).getPublicUrl(path);
+    // Program flyers (purpose: 'program') are only stored and returned as a URL: they must not
+    // appear in the website photo gallery / homepage slideshow.
+    if (purpose === 'program') {
+      return res.status(201).json({ url: pub.data.publicUrl, path });
+    }
     const rec = await db.from('gallery_photos').insert({
       url: pub.data.publicUrl,
       caption: caption || '',

@@ -5,9 +5,20 @@ const { sb } = require('./_supabase');
 // files — only the routing (type dispatch) is new.
 
 async function getEvents(db) {
-  const q = await db.from('events').select('id,title,date,location,description').order('date', { ascending: true }).limit(30);
+  // Programs page: includes flyer image + display fields. If the programs_graphics migration has not
+  // been run yet, those columns do not exist, so fall back to the original columns instead of failing.
+  let q = await db.from('events')
+    .select('id,title,date,location,description,image_url,date_label,display_order,is_published')
+    .order('display_order', { ascending: true, nullsFirst: false })
+    .order('date', { ascending: true })
+    .limit(60);
+  if (q.error && /column|does not exist|schema cache/i.test(q.error.message || '')) {
+    q = await db.from('events').select('id,title,date,location,description').order('date', { ascending: true }).limit(30);
+  }
   if (q.error) throw q.error;
-  return { items: q.data || [] };
+  const rows = q.data || [];
+  // total lets the site tell "no programs at all" (show built-in flyers) from "all unpublished" (show none)
+  return { items: rows.filter(e => e.is_published !== false), total: rows.length };
 }
 
 async function getDepartments(db) {

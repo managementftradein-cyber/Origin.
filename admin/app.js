@@ -8,9 +8,16 @@ const configs={
  prophetic:{title:'Prophetic Room',resource:'prophetic_words',fields:[
   ['title','Title','input'],['content','Content','textarea'],['scripture','Scripture','input'],['image_url','Image URL','input'],['published','Published','check']
  ],cols:['title','scripture','published']},
- events:{title:'Events',resource:'events',fields:[
-  ['title','Title','input'],['description','Description','textarea'],['location','Location','input'],['date','Date / time','input']
- ],cols:['title','date','location']},
+ events:{title:'Program',resource:'events',fields:[
+  ['title','Title','input'],
+  ['image_url','Flyer / graphic','image'],
+  ['date','Date & time (West Africa Time)','datetime'],
+  ['date_label','Date label (optional). Shown instead of the date, e.g. "Every Sunday". Start with "Every" for weekly programs.','input'],
+  ['location','Location','input'],
+  ['description','Description','textarea'],
+  ['display_order','Display order (1 = shown first)','number'],
+  ['is_published','Show on website','check',true]
+ ],cols:['image_url','title','date','display_order','is_published']},
  sermons:{title:'Sermons',resource:'sermons',fields:[
   ['title','Title','input'],['speaker','Speaker','input'],['date','Date','input'],['video_url','Video URL','input'],['description','Description','textarea']
  ],cols:['title','speaker','date']},
@@ -64,11 +71,16 @@ function go(p){
  if(!$('#'+p))p='dashboard';
  $$('.page').forEach(x=>x.classList.remove('active'));$('#'+p).classList.add('active');
  $$('.nav button').forEach(x=>x.classList.toggle('active',x.dataset.p===p));
- const names={dashboard:'Dashboard',analytics:'Analytics',hero:'Hero & About',news:'TCC News',prophetic:'Prophetic Room',live:'Live Control',events:'Events',sermons:'Sermons',announcements:'Announcements',ministries:'Ministries',gallery:'Gallery & Media',communityPosts:'Community Posts',communityComments:'Community Comments',roles:'Community Roles',prayers:'Prayer Requests',messages:'Contact Messages',subscribers:'Subscribers',giving:'Giving',settings:'Church Settings',admins:'Administrators'};
+ const names={dashboard:'Dashboard',analytics:'Analytics',hero:'Hero & About',news:'TCC News',prophetic:'Prophetic Room',live:'Live Control',events:'Programs & Events',sermons:'Sermons',announcements:'Announcements',ministries:'Ministries',gallery:'Gallery & Media',communityPosts:'Community Posts',communityComments:'Community Comments',roles:'Community Roles',prayers:'Prayer Requests',messages:'Contact Messages',subscribers:'Subscribers',giving:'Giving',settings:'Church Settings',admins:'Administrators'};
  $('#title').textContent=names[p]||p;
  history.replaceState(null,'','#'+p);
  load(p);
  if(innerWidth<=900){$('#side').classList.remove('open');$('#scrim').classList.remove('open')}
+}
+function cellHtml(page,k,v){
+ if(k==='image_url')return v?`<img src="${esc(v)}" alt="" style="height:46px;width:auto;max-width:90px;object-fit:cover;border-radius:4px;border:1px solid #1B2C55">`:'<span style="opacity:.5">no image</span>';
+ if(page==='events'&&k==='date'&&v){try{return esc(new Date(v).toLocaleString('en-GB',{timeZone:'Africa/Lagos',dateStyle:'medium',timeStyle:'short'}))}catch(_){}}
+ return esc(v);
 }
 function table(rows,page,filter=''){
  const el=$(`#table-${page}`);if(!el)return;
@@ -77,7 +89,7 @@ function table(rows,page,filter=''){
  const filtered=q?rows.filter(r=>Object.values(r).some(v=>String(v??'').toLowerCase().includes(q))):rows;
  if(!filtered.length){el.innerHTML='<div class="empty">'+(rows.length?'No records match your search.':'No records yet. Use the button above to create one.')+'</div>';return}
  el.innerHTML=`<div class="table-wrap"><table><thead><tr>${c.cols.map(k=>`<th>${esc(k.replaceAll('_',' '))}</th>`).join('')}<th>Actions</th></tr></thead><tbody>`+
- filtered.map(r=>`<tr>${c.cols.map(k=>`<td>${esc(r[k])}</td>`).join('')}<td><button class="btn" data-edit="${esc(r.id)}">Edit</button> <button class="btn danger" data-del="${esc(r.id)}">Delete</button></td></tr>`).join('')+
+ filtered.map(r=>`<tr>${c.cols.map(k=>`<td>${cellHtml(page,k,r[k])}</td>`).join('')}<td><button class="btn" data-edit="${esc(r.id)}">Edit</button> <button class="btn danger" data-del="${esc(r.id)}">Delete</button></td></tr>`).join('')+
  '</tbody></table></div>';
  $$(`#table-${page} [data-edit]`).forEach(b=>b.onclick=()=>openEditor(page,b.dataset.edit,rows.find(r=>r.id===b.dataset.edit)));
  $$(`#table-${page} [data-del]`).forEach(b=>b.onclick=async()=>{
@@ -89,21 +101,88 @@ async function loadContent(page){
  const el=$(`#table-${page}`);if(el)el.innerHTML='<div class="loading">Loading…</div>';
  try{const d=await api(configs[page].resource);table(d.items||[],page)}catch(e){if(el)el.innerHTML=`<div class="errorbox">${esc(e.message)}</div>`}
 }
+
+/* ---------- image upload field (used by Programs & Events) ---------- */
+(function(){const st=document.createElement('style');st.textContent='.imgfield{display:grid;gap:10px}.imgfield .imgprev{border:1px dashed #2a3f73;border-radius:8px;min-height:120px;display:grid;place-items:center;overflow:hidden;background:#0b1020;color:#8fa3d6;font-size:13px}.imgfield .imgprev img{display:block;width:100%;max-height:340px;object-fit:contain;background:#000}.imgfield .imgbtns{display:flex;gap:8px;flex-wrap:wrap}.imgfield .imgnote{font-size:12px;opacity:.7}';document.head.appendChild(st)})();
+function imageFieldHtml(n,label,v){
+ return `<div class="field"><label>${esc(label)}</label><div class="imgfield" data-imgfield="${n}">
+  <div class="imgprev">${v?`<img src="${esc(v)}" alt="">`:'No flyer yet — upload one below'}</div>
+  <div class="imgbtns"><button type="button" class="btn red" data-pick>Upload flyer / image</button><button type="button" class="btn" data-clear>Remove</button></div>
+  <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" hidden>
+  <input name="${n}" type="text" value="${esc(v)}" placeholder="…or paste an image link">
+  <div class="imgnote">JPG, PNG or WEBP. Large images are resized automatically. The whole flyer is shown on the website (never cropped).</div>
+ </div></div>`;
+}
+function compressImage(file,maxSide=1800,quality=.88){
+ return new Promise((resolve,reject)=>{
+  if(file.type==='image/gif'){resolve(file);return}
+  const url=URL.createObjectURL(file),img=new Image();
+  img.onload=()=>{
+   try{
+    const s=Math.min(1,maxSide/Math.max(img.width,img.height)),w=Math.round(img.width*s),h=Math.round(img.height*s);
+    const cv=document.createElement('canvas');cv.width=w;cv.height=h;const cx=cv.getContext('2d');
+    cx.fillStyle='#fff';cx.fillRect(0,0,w,h);cx.drawImage(img,0,0,w,h);URL.revokeObjectURL(url);
+    const attempt=q=>cv.toBlob(b=>{if(!b)return reject(Error('Could not process this image'));if(b.size>3.2*1024*1024&&q>.5)attempt(q-.12);else resolve(b)},'image/jpeg',q);
+    attempt(quality);
+   }catch(e){reject(e)}
+  };
+  img.onerror=()=>{URL.revokeObjectURL(url);reject(Error('That file could not be read as an image'))};
+  img.src=url;
+ });
+}
+function blobToBase64(blob){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(String(r.result).split(',')[1]);r.onerror=()=>rej(Error('Could not read the file'));r.readAsDataURL(blob)})}
+function bindImageFields(form){
+ form.querySelectorAll('[data-imgfield]').forEach(box=>{
+  const name=box.dataset.imgfield,prev=box.querySelector('.imgprev'),file=box.querySelector('input[type=file]'),field=form.elements[name],pick=box.querySelector('[data-pick]'),clr=box.querySelector('[data-clear]');
+  const show=u=>{prev.innerHTML=u?`<img src="${esc(u)}" alt="">`:'No flyer yet — upload one below'};
+  pick.onclick=()=>file.click();
+  clr.onclick=()=>{field.value='';show('')};
+  field.addEventListener('input',()=>show(field.value.trim()));
+  file.onchange=async()=>{
+   const f=file.files[0];file.value='';if(!f)return;
+   if(!/^image\//.test(f.type)){toast('Please choose an image file (JPG, PNG or WEBP)','error');return}
+   const old=pick.textContent;pick.disabled=true;pick.textContent='Uploading…';
+   try{
+    const blob=await compressImage(f),token=await TCCAdmin.token();
+    const r=await fetch('/api/upload',{method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({contentType:blob.type||'image/jpeg',dataBase64:await blobToBase64(blob),caption:f.name,category:'Program Flyer',purpose:'program'})});
+    let d={};try{d=await r.json()}catch(_){}
+    if(!r.ok)throw Error(d.error||`Upload failed (${r.status})`);
+    field.value=d.url;show(d.url);toast('Flyer uploaded. Press Save Changes to publish it.');
+   }catch(e){toast(e.message,'error')}
+   finally{pick.disabled=false;pick.textContent=old}
+  };
+ });
+}
 function openEditor(page,id,row={}){
  const c=configs[page],m=$('#modal'),f=$('#editor');if(!m||!f)return;
  $('#modalTitle').textContent=(id?'Edit ':'New ')+c.title;
- f.innerHTML=c.fields.map(([n,label,type])=>{
+ f.innerHTML=c.fields.map(([n,label,type,def])=>{
   const v=row[n]??'';
   if(type==='textarea')return `<div class="field"><label>${esc(label)}</label><textarea name="${n}">${esc(v)}</textarea></div>`;
-  if(type==='check')return `<label class="switch"><input type="checkbox" name="${n}" ${v?'checked':''}> ${esc(label)}</label>`;
+  if(type==='check'){const on=(row[n]===undefined||row[n]===null)?(def!==undefined?def:false):row[n];return `<label class="switch"><input type="checkbox" name="${n}" ${on?'checked':''}> ${esc(label)}</label>`}
+  if(type==='image')return imageFieldHtml(n,label,v);
+  if(type==='datetime')return `<div class="field"><label>${esc(label)}</label><input name="${n}" type="datetime-local" value="${esc(localDateTimeValue(v))}"></div>`;
+  if(type==='number')return `<div class="field"><label>${esc(label)}</label><input name="${n}" type="number" step="1" value="${esc(v)}"></div>`;
   const inputType=n==='date'?'date':'text';
   return `<div class="field"><label>${esc(label)}</label><input name="${n}" type="${inputType}" value="${esc(v)}"></div>`;
  }).join('')+'<button class="btn red" type="submit">Save Changes</button>';
  m.classList.add('open');
+ bindImageFields(f);
  f.onsubmit=async e=>{
   e.preventDefault();const data={};
-  c.fields.forEach(([n])=>{const x=f.elements[n];if(x)data[n]=x.type==='checkbox'?x.checked:x.value});
-  try{await api(c.resource,id?'PATCH':'POST',id?{id,data}:{data});m.classList.remove('open');toast(id?'Changes saved':'Created successfully');await loadContent(page)}catch(err){toast(err.message,'error')}
+  for(const [n,,type] of c.fields){
+   const x=f.elements[n];if(!x)continue;
+   if(type==='datetime'){const iso=isoFromLocalDateTime(x.value);if(iso)data[n]=iso;else if(!id){toast('Please choose a date and time','error');return}}
+   else if(type==='number'){data[n]=x.value===''?null:Number(x.value)}
+   else if(type==='image'){data[n]=x.value.trim()||null}
+   else data[n]=x.type==='checkbox'?x.checked:x.value;
+  }
+  try{await api(c.resource,id?'PATCH':'POST',id?{id,data}:{data});m.classList.remove('open');toast(id?'Changes saved':'Created successfully');await loadContent(page)}
+  catch(err){
+   const msg=String(err.message||'');
+   if(page==='events'&&/column|schema cache/i.test(msg))toast('One-time setup needed: run supabase/programs_graphics_migration.sql in Supabase (SQL Editor), then try again.','error');
+   else toast(msg,'error');
+  }
  };
 }
 async function loadHero(){
