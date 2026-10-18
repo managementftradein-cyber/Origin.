@@ -124,7 +124,7 @@ async function loadLive(){
  try{
   const d=await api('live_status'),s=(d.items||[])[0]||{},f=$('#liveForm');
   ['title','description','stream_url','embed_url'].forEach(n=>{if(f.elements[n])f.elements[n].value=s[n]??''});
-  f.elements.is_live.checked=!!s.is_live;$('#liveStatus').textContent=s.is_live?'LIVE NOW':'OFFLINE';$('#liveBadge').classList.toggle('live',!!s.is_live);
+  f.elements.is_live.checked=!!s.is_live;window.TCCLive&&TCCLive.refreshAdminPreview&&TCCLive.refreshAdminPreview();$('#liveStatus').textContent=s.is_live?'LIVE NOW':'OFFLINE';$('#liveBadge').classList.toggle('live',!!s.is_live);
  }catch(e){$('#liveStatus').textContent='ERROR';toast(e.message,'error')}
 }
 async function loadGallery(){
