@@ -192,3 +192,49 @@ body:has(.tcc-brandbar)::before{
 
 /* mobile dropdown menu: stays nearly solid so links are always readable, but in the navy of the glass bar rather than black */
 .navlinks.open{background:linear-gradient(135deg,rgba(255,255,255,.07),rgba(255,255,255,.02)),rgba(10,17,40,.95);border-color:rgba(255,255,255,.16);box-shadow:0 18px 50px rgba(0,0,0,.45)}
+
+/* ==========================================================================
+   PROGRAMS PAGE — flyer cards, home thumbnails, full-size viewer
+   ========================================================================== */
+.flyer-grid{columns:2;column-gap:30px}
+.flyer{break-inside:avoid;display:inline-block;width:100%;margin:0 0 30px;background:#fff;border:1px solid #ddd3c2;box-shadow:0 18px 44px -26px rgba(10,16,40,.45);overflow:hidden}
+.flyer-img{position:relative;display:block;width:100%;padding:0;border:0;background:#0b1020;cursor:zoom-in;line-height:0}
+.flyer-img img{display:block;width:100%;height:auto;transition:transform .7s cubic-bezier(.22,1,.36,1)}
+.flyer-img:hover img,.flyer-img:focus-visible img{transform:scale(1.025)}
+.flyer-img:focus-visible{outline:3px solid var(--red,#155EEF);outline-offset:-3px}
+.flyer-zoom{position:absolute;right:14px;bottom:14px;line-height:1;padding:9px 13px;background:rgba(10,17,40,.78);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);color:#fff;font:600 10px Inter,sans-serif;letter-spacing:.14em;text-transform:uppercase;opacity:0;transform:translateY(6px);transition:.3s}
+.flyer-img:hover .flyer-zoom,.flyer-img:focus-visible .flyer-zoom{opacity:1;transform:none}
+.flyer-body{padding:24px 26px 26px}
+.flyer-when{font:700 11px Inter,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--red,#155EEF);margin-bottom:10px}
+.flyer h3{font:500 27px/1.2 "Playfair Display",serif;margin:0 0 8px}
+.flyer p{color:#6d675c;font-size:14px;line-height:1.65;margin:6px 0 0}
+.flyer .flyer-loc{color:#8a8374;font-size:13px}
+.flyer-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:20px}
+.flyer-actions .btn{padding:11px 16px;font-size:11px}
+.programs-empty{padding:50px 0;color:#6d675c;font-size:15px}
+.event.has-img{grid-template-columns:150px 1fr auto}
+.ev-thumb{padding:0;border:0;background:#0b1020;cursor:zoom-in;line-height:0;overflow:hidden;box-shadow:0 10px 26px -14px rgba(10,16,40,.6)}
+.ev-thumb img{display:block;width:100%;height:auto;max-height:110px;object-fit:cover}
+/* viewer */
+.lightbox{position:fixed;inset:0;z-index:100000;display:grid;place-items:center;padding:24px;background:rgba(4,8,22,.86);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+.lightbox[hidden]{display:none}
+.lightbox figure{margin:0;max-width:min(1100px,100%);max-height:100%;display:flex;flex-direction:column;gap:14px;align-items:center}
+.lightbox img{display:block;max-width:100%;max-height:calc(100vh - 190px);width:auto;height:auto;box-shadow:0 30px 80px rgba(0,0,0,.6);background:#000}
+.lightbox figcaption{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:6px 16px;color:#fff;text-align:center}
+.lightbox figcaption b{font:500 20px "Playfair Display",serif}
+.lightbox figcaption span{font:600 11px Inter,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#9dbbff}
+.lb-actions{display:flex;gap:10px;flex-basis:100%;justify-content:center}
+.lb-actions .btn{color:#fff;border-color:rgba(255,255,255,.35);padding:10px 15px;font-size:11px;background:transparent}
+.lb-close,.lb-nav{position:absolute;border:1px solid rgba(255,255,255,.28);background:rgba(255,255,255,.08);color:#fff;cursor:pointer;display:grid;place-items:center;line-height:1;transition:background .2s}
+.lb-close:hover,.lb-nav:hover{background:rgba(255,255,255,.2)}
+.lb-close{top:18px;right:18px;width:46px;height:46px;font-size:30px}
+.lb-nav{top:50%;width:46px;height:62px;margin-top:-31px;font-size:34px}
+.lb-prev{left:16px}.lb-next{right:16px}
+.lightbox.single .lb-nav{display:none}
+@media (max-width:860px){
+  .flyer-grid{columns:1}
+  .event.has-img{grid-template-columns:110px 1fr}
+  .event.has-img .btn{grid-column:1/-1;justify-self:start}
+  .lb-nav{top:auto;bottom:18px;margin:0;height:46px}
+  .lightbox img{max-height:calc(100vh - 220px)}
+}

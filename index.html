@@ -287,12 +287,13 @@ body{overflow-x:hidden}
 <script>
 const app=document.getElementById('app'), transition=document.getElementById('transition'), loader=document.getElementById('loader'), header=document.getElementById('header'), menu=document.getElementById('menu'), nav=document.getElementById('navlinks');
 const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
+const FALLBACK_EVENTS=[
+ {title:'TCC Worship Experience',date:'2026-10-25T16:00:00Z',location:'Church Auditorium \u00b7 BFB Plaza, Opp. Aklad Filling Station, Odo-ona Elewe, Ibadan',description:'An evening of worship with our ministers. For enquiries call +234 912 350 4269.',image_url:'/assets/programs/tcc-worship-experience.jpg'},
+ {title:'50 Days Bible Study',date:'2026-10-10T17:00:00Z',date_label:'10 Oct \u2013 30 Nov 2026 \u00b7 Mon\u2013Fri 6pm, Sat 7am',location:'Church Auditorium, Ibadan \u00b7 and online (YouTube & Facebook: The Christocentric Church)',description:'Fifty days in the Word. Join us at the church auditorium or online. Enquiries: +234 912 350 4269.',image_url:'/assets/programs/50-days-bible-study.jpg'},
+ {title:'Weekly Services',date:'2026-10-21T16:00:00Z',date_label:'Every Wednesday & Sunday',location:'Church Auditorium, BFB Plaza, Odo-ona Elewe, Ibadan',description:'Wednesdays 5:00pm Bible Study. Sundays 8:00am Sunday School and 9:00am Word & Worship.',image_url:'/assets/programs/weekly-services.jpg'}
+];
 const data={
- events:[
-  {day:'07',mon:'SEP',title:'Sunday Celebration Service',meta:'Sunday · 9:00 AM · Main Auditorium',desc:'Worship, the Word and fellowship together.'},
-  {day:'12',mon:'SEP',title:'Prayer & Word Encounter',meta:'Friday · 6:00 PM · Sanctuary',desc:'An evening devoted to prayer and spiritual renewal.'},
-  {day:'21',mon:'SEP',title:'Kingdom Builders Gathering',meta:'Saturday · 10:00 AM · Fellowship Hall',desc:'Equipping believers to serve with purpose.'}
- ],
+ events:FALLBACK_EVENTS.map(mapEvent),
  departments:[
   ['01','Worship & Music','Lead the church into Christ-centered worship through vocals, instruments, production and excellence.'],
   ['02','Media & Broadcast','Extend the message beyond the building through livestream, photography, video and digital ministry.'],
@@ -305,16 +306,18 @@ const data={
 // The two arrays above are fallback/sample content, shown until loadLiveCollections()
 // (below) replaces them with what's actually in Supabase — or if that fetch fails.
 function mapEvent(e){
- const d=e.date?new Date(e.date):null;
- const meta=[d?d.toLocaleString('en-US',{weekday:'long'}):'',d?d.toLocaleString('en-US',{hour:'numeric',minute:'2-digit'}):'',e.location].filter(Boolean).join(' · ');
- return{day:d?String(d.getDate()).padStart(2,'0'):'--',mon:d?d.toLocaleString('en-US',{month:'short'}).toUpperCase():'',title:e.title||'Untitled Event',meta:meta||'Details to follow',desc:e.description||''};
+ const d=e.date?new Date(e.date):null,ok=d&&!isNaN(d),tz={timeZone:'Africa/Lagos'},L=(o)=>ok?d.toLocaleString('en-US',{...tz,...o}):'';
+ const label=String(e.date_label||'').trim(),weekly=/^every\b/i.test(label),tm=L({hour:'numeric',minute:'2-digit'});
+ const meta=[ok&&!label?L({weekday:'long'}):'',ok&&!label?tm:'',e.location].filter(Boolean).join(' \u00b7 ');
+ const when=label||(ok?L({weekday:'short',day:'numeric',month:'short'})+' \u00b7 '+tm+' WAT':'');
+ return{id:e.id||'',day:weekly?'\u21bb':(ok?L({day:'2-digit'}):'--'),mon:weekly?'WEEKLY':(ok?L({month:'short'}).toUpperCase():''),title:e.title||'Untitled Event',meta:meta||'Details to follow',desc:e.description||'',location:e.location||'',img:e.image_url||'',when,ts:ok?d.getTime():0,recurring:!!label};
 }
 function mapDept(d,i){return[String(i+1).padStart(2,'0'),d.name||'Department',d.description||''];}
 async function loadLiveCollections(){
  try{
-  const [er,dr]=await Promise.all([fetch('/api/events'),fetch('/api/departments')]);
-  if(er.ok){const ej=await er.json();const items=ej.items||[];if(items.length)data.events=items.map(mapEvent)}
-  if(dr.ok){const dj=await dr.json();const items=dj.items||[];if(items.length)data.departments=items.map(mapDept)}
+  const [er,dr]=await Promise.all([fetch('/api/events').catch(()=>null),fetch('/api/departments').catch(()=>null)]); /* one failing request must not discard the other */
+  if(er&&er.ok){const ej=await er.json();const items=ej.items||[];if(items.length)data.events=items.map(mapEvent);else if(ej.total>0)data.events=[]}
+  if(dr&&dr.ok){const dj=await dr.json();const items=dj.items||[];if(items.length)data.departments=items.map(mapDept)}
  }catch(e){console.warn('Live collections unavailable',e)}
  const current=location.pathname.replace(/\/+$/,'')||'/';
  if(current==='/'||current==='/programs')pages[current]();
@@ -352,7 +355,7 @@ shell(`<section class="hero"><div class="hero-bg" id="heroBackground">${['hero-1
 </div></section>
 <section class="section dark message-section" id="message"><div class="wrap"><div class="section-head reveal"><div class="eyebrow">Our Message</div><h2>The simplicity in <span class="red">Christ.</span></h2><p>Our church is built around a simple conviction: Jesus is not one part of the church's life. He is the center of it.</p></div><div class="video-frame reveal"><video id="missionVideo" class="video-el" poster="/assets/mission-poster.jpg" preload="auto" autoplay muted playsinline controlslist="nodownload"><source src="/assets/mission.mp4" type="video/mp4">Your browser does not support embedded video.</video><button class="video-play" id="missionPlay" type="button" aria-label="Play the message"><span class="vp-icon">&#9654;</span></button><button class="video-unmute hidden" id="missionUnmute" type="button" aria-label="Unmute the message"><span class="vu-icon">&#128264;</span><span class="vu-label">Tap for sound</span></button></div></div></section>
 <section class="section dark" id="gallery"><div class="wrap"><div class="section-head reveal"><div class="eyebrow">Moments</div><h2>Life together.</h2><p>Gatherings, worship, service and fellowship — moments that tell the story of a church family.</p></div><div class="gallery" id="homepageGallery">${['hero-1.jpg','hero-2.jpg','hero-3.jpg'].map((x,i)=>`<figure class="reveal"><img src="/assets/${x}" alt="Church gathering"><figcaption>${['Worship','Community','Mission'][i]}</figcaption></figure>`).join('')}</div></div></section>
-<section class="section"><div class="wrap"><div class="section-head reveal"><div class="eyebrow">Upcoming</div><h2>Come and be part of it.</h2></div>${data.events.map(eventCard).join('')}<div style="margin-top:35px"><a class="btn red-btn" href="/programs" data-route="/programs">See All Programs</a></div></div></section>
+<section class="section"><div class="wrap"><div class="section-head reveal"><div class="eyebrow">Upcoming</div><h2>Come and be part of it.</h2></div>${data.events.slice(0,4).map(eventCard).join('')}<div style="margin-top:35px"><a class="btn red-btn" href="/programs" data-route="/programs">See All Programs</a></div></div></section>
 <section class="section dark"><div class="wrap" style="display:flex;justify-content:space-between;align-items:center;gap:35px;flex-wrap:wrap"><div class="reveal"><div class="eyebrow">Take the next step</div><h2 class="serif" style="font-size:clamp(38px,5vw,65px);margin-top:15px">You belong here.</h2></div><a class="btn red-btn reveal" href="/contact" data-route="/contact">Plan a Visit</a></div></section>`);
 startHeroCycle(document.getElementById('heroBackground'),6);
 bindMissionVideo();
@@ -390,12 +393,63 @@ async function loadEditableHome(){
  }catch(e){console.warn('Editable content unavailable',e)}
 }
 
-function eventCard(e){return `<div class="event reveal"><div class="datebox"><b>${e.day}</b><small>${e.mon}</small></div><div><h3>${e.title}</h3><p>${e.meta}</p><p>${e.desc}</p></div><a class="btn" href="/programs" data-route="/programs">Details</a></div>`}
+function eventCard(e){
+ const lead=e.img?`<button type="button" class="ev-thumb" data-flyer="${esc(e.img)}" data-title="${esc(e.title)}" data-when="${esc(e.when)}" aria-label="View flyer: ${esc(e.title)}"><img src="${esc(e.img)}" alt="" loading="lazy"></button>`:`<div class="datebox"><b>${esc(e.day)}</b><small>${esc(e.mon)}</small></div>`;
+ return `<div class="event reveal${e.img?' has-img':''}" data-ts="${e.ts||0}" data-rec="${e.recurring?1:0}">${lead}<div><h3>${esc(e.title)}</h3><p>${esc(e.meta)}</p><p>${esc(e.desc)}</p></div><a class="btn" href="/programs" data-route="/programs">Details</a></div>`
+}
 function about(){shell(pageHero('Who we are','A church centered on Jesus.','A community pursuing Christ in worship, Scripture, discipleship and mission.')+`<section class="section"><div class="wrap about-grid"><div class="about-image reveal" id="aboutImage"></div><div class="reveal"><div class="eyebrow" id="aboutLabel">Our Story</div><h2 class="serif" id="aboutHeading" style="font-size:clamp(38px,5vw,65px);margin:18px 0">Christ is the center, not the accessory.</h2><p class="copy" id="aboutBody">The Christocentric Church exists to help people know Christ, become like Christ and make Christ known. We believe the gospel shapes the way we worship, lead, work, serve, build families and care for our communities.</p><div class="quote" id="aboutQuote">“In everything, Christ must have the first place.”</div><p class="copy">Our gatherings are designed to be both reverent and alive: biblical teaching, sincere worship, meaningful relationships and practical opportunities to serve.</p></div></div></section><section class="section dark"><div class="wrap"><div class="section-head reveal"><div class="eyebrow">Our Values</div><h2>Three movements. One center.</h2></div><div class="grid3">${[['Gather','We gather around Christ in worship and prayer.'],['Grow','We grow through Scripture, discipleship and community.'],['Go','We go into the world with the love and message of Jesus.']].map((x,i)=>`<div class="card reveal" style="background:#11100e;border-color:var(--line);color:#fff"><div class="num">0${i+1}</div><h3>${x[0]}</h3><p style="color:#aaa398">${x[1]}</p></div>`).join('')}</div></div></section>`);loadEditableAbout()}
 async function loadEditableAbout(){try{const r=await fetch('/api/site-content');if(!r.ok)return;const s=(await r.json()).settings||{};if(s.about_label)document.getElementById('aboutLabel').textContent=s.about_label;if(s.about_heading)document.getElementById('aboutHeading').textContent=s.about_heading;if(s.about_body)document.getElementById('aboutBody').textContent=s.about_body;if(s.about_quote)document.getElementById('aboutQuote').textContent=s.about_quote;if(s.about_image_url)document.getElementById('aboutImage').style.backgroundImage=`url('${esc(s.about_image_url)}')`}catch(e){console.warn(e)}}
 
-function programs(){shell(pageHero('Programs & Events','There is a place for you.','Gather with us, grow with us and find a meaningful way to serve.')+`<section class="section"><div class="wrap"><div class="filters"><button class="filter active" data-filter="all">All</button><button class="filter" data-filter="week">This Week</button><button class="filter" data-filter="month">This Month</button></div><div id="events">${data.events.map(eventCard).join('')}</div></div></section><section class="section dark"><div class="wrap"><div class="section-head reveal"><div class="eyebrow">Departments</div><h2>Serve where your gifts meet a need.</h2></div><div class="grid3">${data.departments.map(x=>`<article class="card reveal" style="background:#11100e;border-color:var(--line);color:#fff"><div class="num">${x[0]}</div><h3>${x[1]}</h3><p style="color:#aaa398">${x[2]}</p><a href="/contact" data-route="/contact" style="color:var(--red2)">I'm Interested →</a></article>`).join('')}</div></div></section>`); bindFilters()}
-function bindFilters(){document.querySelectorAll('.filter').forEach(b=>b.onclick=()=>{document.querySelectorAll('.filter').forEach(x=>x.classList.remove('active'));b.classList.add('active'); document.querySelectorAll('#events .event').forEach((e,i)=>e.style.display=b.dataset.filter==='all'||(b.dataset.filter==='week'&&i<1)|| (b.dataset.filter==='month'&&i<3)?'grid':'none')})}
+function flyerCard(e){
+ const share=`${esc(e.title)}`;
+ return `<article class="flyer reveal" data-ts="${e.ts||0}" data-rec="${e.recurring?1:0}">
+ <button type="button" class="flyer-img" data-flyer="${esc(e.img)}" data-title="${esc(e.title)}" data-when="${esc(e.when)}" aria-label="View full flyer: ${share}"><img src="${esc(e.img)}" alt="${share} flyer" loading="lazy"><span class="flyer-zoom">View full flyer</span></button>
+ <div class="flyer-body">${e.when?`<div class="flyer-when">${esc(e.when)}</div>`:''}<h3>${share}</h3>${e.location?`<p class="flyer-loc">${esc(e.location)}</p>`:''}${e.desc?`<p>${esc(e.desc)}</p>`:''}
+ <div class="flyer-actions"><button type="button" class="btn" data-flyer="${esc(e.img)}" data-title="${esc(e.title)}" data-when="${esc(e.when)}">View flyer</button><button type="button" class="btn" data-share data-title="${share}" data-text="${esc([e.when,e.location].filter(Boolean).join(' \u00b7 '))}">Share</button><a class="btn" href="/find-us" data-route="/find-us">Directions</a></div></div></article>`
+}
+function programs(){
+ const flyers=data.events.filter(e=>e.img),rows=data.events.filter(e=>!e.img);
+ shell(pageHero('Programs & Events','There is a place for you.','Gather with us, grow with us and find a meaningful way to serve.')+`<section class="section"><div class="wrap"><div class="filters"><button class="filter active" data-filter="all">All</button><button class="filter" data-filter="week">This Week</button><button class="filter" data-filter="month">This Month</button></div>${flyers.length?`<div class="flyer-grid" id="flyers">${flyers.map(flyerCard).join('')}</div>`:''}${rows.length?`<div id="events"${flyers.length?' style="margin-top:46px"':''}>${rows.map(eventCard).join('')}</div>`:''}${data.events.length?'':'<p class="programs-empty">New programs are being added. Please check back soon, or <a href="/contact" data-route="/contact">contact us</a>.</p>'}</div></section><section class="section dark"><div class="wrap"><div class="section-head reveal"><div class="eyebrow">Departments</div><h2>Serve where your gifts meet a need.</h2></div><div class="grid3">${data.departments.map(x=>`<article class="card reveal" style="background:#11100e;border-color:var(--line);color:#fff"><div class="num">${x[0]}</div><h3>${x[1]}</h3><p style="color:#aaa398">${x[2]}</p><a href="/contact" data-route="/contact" style="color:var(--red2)">I'm Interested →</a></article>`).join('')}</div></div></section>`); bindFilters()}
+function bindFilters(){
+ document.querySelectorAll('.filter').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('.filter').forEach(x=>x.classList.remove('active'));b.classList.add('active');
+  const f=b.dataset.filter,now=Date.now(),day=864e5;
+  document.querySelectorAll('#flyers .flyer,#events .event').forEach(el=>{
+   const ts=+el.dataset.ts||0,rec=el.dataset.rec==='1';let show=true;
+   if(f==='week')show=rec||(ts>=now-day&&ts<=now+7*day);
+   if(f==='month')show=rec||(ts>=now-day&&ts<=now+31*day);
+   el.style.display=show?'':'none';
+  });
+ });
+}
+/* ---- full-size flyer viewer + share (works on Programs and Home) ---- */
+(function(){
+ let box,list=[],idx=0,lastFocus=null;
+ function build(){
+  box=document.createElement('div');box.className='lightbox';box.setAttribute('role','dialog');box.setAttribute('aria-modal','true');box.setAttribute('aria-label','Program flyer');box.hidden=true;
+  box.innerHTML='<button class="lb-close" type="button" aria-label="Close">\u00d7</button><button class="lb-nav lb-prev" type="button" aria-label="Previous flyer">\u2039</button><button class="lb-nav lb-next" type="button" aria-label="Next flyer">\u203a</button><figure><img alt=""><figcaption><b></b><span></span><div class="lb-actions"><a class="btn" target="_blank" rel="noopener">Open full size \u2197</a><button class="btn" type="button" data-lbshare>Share</button></div></figcaption></figure>';
+  document.body.appendChild(box);
+  box.addEventListener('click',e=>{if(e.target===box||e.target.closest('.lb-close'))close();else if(e.target.closest('.lb-prev'))go(-1);else if(e.target.closest('.lb-next'))go(1);else if(e.target.closest('[data-lbshare]'))share(list[idx].title,list[idx].when)});
+ }
+ function show(){const it=list[idx];box.querySelector('img').src=it.src;box.querySelector('img').alt=it.title+' flyer';box.querySelector('figcaption b').textContent=it.title;box.querySelector('figcaption span').textContent=it.when||'';box.querySelector('figcaption a').href=it.src;box.classList.toggle('single',list.length<2)}
+ function open(src){
+  if(!box)build();
+  const seen=new Set();list=[];document.querySelectorAll('[data-flyer]').forEach(n=>{const u=n.getAttribute('data-flyer');if(u&&!seen.has(u)){seen.add(u);list.push({src:u,title:n.getAttribute('data-title')||'',when:n.getAttribute('data-when')||''})}});
+  idx=Math.max(0,list.findIndex(x=>x.src===src));lastFocus=document.activeElement;show();box.hidden=false;document.documentElement.style.overflow='hidden';box.querySelector('.lb-close').focus();
+ }
+ function close(){if(!box||box.hidden)return;box.hidden=true;document.documentElement.style.overflow='';if(lastFocus&&lastFocus.focus)lastFocus.focus()}
+ function go(d){idx=(idx+d+list.length)%list.length;show()}
+ async function share(title,text){
+  const url=location.origin+'/programs',msg=[title,text].filter(Boolean).join(' \u2014 ');
+  if(navigator.share){try{await navigator.share({title,text:msg,url});return}catch(e){if(e&&e.name==='AbortError')return}}
+  window.open('https://wa.me/?text='+encodeURIComponent(msg+' '+url),'_blank','noopener');
+ }
+ document.addEventListener('click',e=>{
+  const f=e.target.closest('[data-flyer]');if(f){e.preventDefault();open(f.getAttribute('data-flyer'));return}
+  const sh=e.target.closest('[data-share]');if(sh){e.preventDefault();share(sh.getAttribute('data-title')||'',sh.getAttribute('data-text')||'')}
+ });
+ document.addEventListener('keydown',e=>{if(!box||box.hidden)return;if(e.key==='Escape')close();else if(e.key==='ArrowLeft')go(-1);else if(e.key==='ArrowRight')go(1)});
+})();
 function partnership(){shell(pageHero('Partnership','Build with us.','Partnership is an invitation to invest your time, skills, resources and influence in the work God is doing through the church.')+`<section class="section"><div class="wrap"><div class="section-head reveal"><div class="eyebrow">Ways to Partner</div><h2>Different gifts. One mission.</h2></div><div class="grid3">${[['Prayer','Stand with the church in consistent prayer and spiritual support.'],['Service','Use your professional and practical gifts to strengthen ministry.'],['Resources','Help create spaces, tools and opportunities that serve people well.']].map((x,i)=>`<article class="card reveal"><div class="num">0${i+1}</div><h3>${x[0]}</h3><p>${x[1]}</p><a href="/contact" data-route="/contact">Start a conversation →</a></article>`).join('')}</div></div></section><section class="section dark"><div class="wrap" style="max-width:800px"><div class="eyebrow">Partnership</div><h2 class="serif" style="font-size:55px;margin:18px 0">Let’s build something that serves people and points to Christ.</h2><a class="btn red-btn" href="/contact" data-route="/contact">Contact Us</a></div></section>`)}
 function college(){shell(pageHero('Church College','Learn. Grow. Lead.','A practical discipleship environment for believers who want deeper biblical foundations and ministry development.')+`<section class="section"><div class="wrap"><div class="about-grid"><div class="reveal"><div class="eyebrow">What to Expect</div><h2 class="serif" style="font-size:60px;margin:18px 0">Formation beyond Sunday.</h2><p class="copy">The Church College is designed around teaching, practice, mentorship and spiritual formation. Courses and schedules can be checked on member dashboard.</p><div style="margin-top:28px"><a class="btn red-btn" href="/contact" data-route="/contact">Ask About Enrollment</a></div></div><div class="card reveal"><div class="num">CC</div><h3>Coming alongside your calling.</h3><p>Explore biblical foundations, leadership, ministry skills and practical Christian living in an intentional learning environment.</p></div></div></div></section>`)}
 async function give(){
