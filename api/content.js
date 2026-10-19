@@ -62,8 +62,15 @@ async function getSiteContent(db) {
   if (photos.error) throw photos.error;
   const items = photos.data || [];
   const hero = items.filter(x => String(x.category || '').toLowerCase() === 'hero');
+  // Pastor's Library link settings live in separate columns; if the library migration has not been run
+  // yet this extra query simply fails and the site uses its built-in defaults.
+  let library = {};
+  try {
+    const l = await db.from('church_settings').select('library_enabled,library_url,library_title,library_text,library_button').eq('id', 1).maybeSingle();
+    if (!l.error && l.data) library = l.data;
+  } catch (_) { /* keep defaults */ }
   return {
-    settings: settings.data || {},
+    settings: { ...(settings.data || {}), ...library },
     hero: (hero.length ? hero : items.slice(0, 3)).slice(0, 12),
     gallery: items.filter(x => String(x.category || '').toLowerCase() !== 'hero')
   };
