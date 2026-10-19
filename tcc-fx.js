@@ -28,7 +28,7 @@
 
   /* ---------- what gets animated ---------- */
   var PHOTO = 'figure,img,video,iframe,.about-image,.tcc-post-image,.tcc-player,.tcc-map-frame';
-  var TILE = '.card,.tcc-card,.tcc-panel,.tcc-post,.tcc-comment,.event,.info-item,.tcc-map-card,' +
+  var TILE = '.card,.lib-tile,.tcc-card,.tcc-panel,.tcc-post,.tcc-comment,.event,.info-item,.tcc-map-card,' +
              '.tcc-empty,article,.form,.tcc-composer,.tcc-authform,.footgrid>div,.grid3>*';
   var TEXT = 'h1,h2,h3,h4,p,.eyebrow,.tcc-kicker,.tcc-meta,.quote,.copy,.hero-actions,.hero-note,' +
              '.filters,.copyright,.btn,.tcc-btn,.tcc-map-btn';
