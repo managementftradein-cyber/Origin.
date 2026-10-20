@@ -1,0 +1,30 @@
+{
+  "id": "/",
+  "name": "The Christocentric Church",
+  "short_name": "TCC",
+  "description": "Christ at the center. Programs, live broadcasts, community, the pastor's library and giving, all in one app.",
+  "start_url": "/?source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "background_color": "#0a1024",
+  "theme_color": "#0a1024",
+  "lang": "en-NG",
+  "dir": "ltr",
+  "categories": ["lifestyle", "education"],
+  "icons": [
+    { "src": "/assets/pwa/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/assets/pwa/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/assets/pwa/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Watch Live", "short_name": "Live", "description": "Join the live broadcast", "url": "/live?source=shortcut", "icons": [{ "src": "/assets/pwa/icon-192.png", "sizes": "192x192", "type": "image/png" }] },
+    { "name": "Programs & Events", "short_name": "Programs", "description": "See what is happening at TCC", "url": "/programs?source=shortcut", "icons": [{ "src": "/assets/pwa/icon-192.png", "sizes": "192x192", "type": "image/png" }] },
+    { "name": "Give", "short_name": "Give", "description": "Give to the work of the ministry", "url": "/give?source=shortcut", "icons": [{ "src": "/assets/pwa/icon-192.png", "sizes": "192x192", "type": "image/png" }] },
+    { "name": "Community", "short_name": "Community", "description": "Connect with the church family", "url": "/community?source=shortcut", "icons": [{ "src": "/assets/pwa/icon-192.png", "sizes": "192x192", "type": "image/png" }] }
+  ],
+  "screenshots": [
+    { "src": "/assets/pwa/screenshot-wide.jpg", "sizes": "1280x800", "type": "image/jpeg", "form_factor": "wide", "label": "The Christocentric Church home page" },
+    { "src": "/assets/pwa/screenshot-narrow.jpg", "sizes": "390x844", "type": "image/jpeg", "form_factor": "narrow", "label": "The Christocentric Church on a phone" }
+  ]
+}
