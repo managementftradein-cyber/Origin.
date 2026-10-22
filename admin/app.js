@@ -104,13 +104,13 @@ async function loadContent(page){
 
 /* ---------- image upload field (used by Programs & Events) ---------- */
 (function(){const st=document.createElement('style');st.textContent='.imgfield{display:grid;gap:10px}.imgfield .imgprev{border:1px dashed #2a3f73;border-radius:8px;min-height:120px;display:grid;place-items:center;overflow:hidden;background:#0b1020;color:#8fa3d6;font-size:13px}.imgfield .imgprev img{display:block;width:100%;max-height:340px;object-fit:contain;background:#000}.imgfield .imgbtns{display:flex;gap:8px;flex-wrap:wrap}.imgfield .imgnote{font-size:12px;opacity:.7}';document.head.appendChild(st)})();
-function imageFieldHtml(n,label,v){
- return `<div class="field"><label>${esc(label)}</label><div class="imgfield" data-imgfield="${n}">
+function imageFieldHtml(n,label,v,attrs='',note='JPG, PNG or WEBP. Large images are resized automatically. The whole flyer is shown on the website (never cropped).'){
+ return `<div class="field"><label>${esc(label)}</label><div class="imgfield" data-imgfield="${n}" ${attrs}>
   <div class="imgprev">${v?`<img src="${esc(v)}" alt="">`:'No flyer yet — upload one below'}</div>
   <div class="imgbtns"><button type="button" class="btn red" data-pick>Upload flyer / image</button><button type="button" class="btn" data-clear>Remove</button></div>
   <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" hidden>
   <input name="${n}" type="text" value="${esc(v)}" placeholder="…or paste an image link">
-  <div class="imgnote">JPG, PNG or WEBP. Large images are resized automatically. The whole flyer is shown on the website (never cropped).</div>
+  <div class="imgnote">${esc(note)}</div>
  </div></div>`;
 }
 function compressImage(file,maxSide=1800,quality=.88){
@@ -131,27 +131,69 @@ function compressImage(file,maxSide=1800,quality=.88){
  });
 }
 function blobToBase64(blob){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(String(r.result).split(',')[1]);r.onerror=()=>rej(Error('Could not read the file'));r.readAsDataURL(blob)})}
+
+/* like compressImage, but keeps a transparent background (PNG/WebP cut-outs) and reports whether the picture has one */
+function prepareImage(file,maxSide=1500){
+ return new Promise((resolve,reject)=>{
+  const url=URL.createObjectURL(file),img=new Image();
+  img.onload=()=>{
+   URL.revokeObjectURL(url);
+   let side=maxSide;
+   const attempt=()=>{
+    const s=Math.min(1,side/Math.max(img.width,img.height)),w=Math.round(img.width*s),h=Math.round(img.height*s);
+    const cv=document.createElement('canvas');cv.width=w;cv.height=h;const cx=cv.getContext('2d',{willReadFrequently:true});cx.drawImage(img,0,0,w,h);
+    let tr=0,n=0;try{const d=cx.getImageData(0,0,w,h).data,step=Math.max(1,Math.floor(Math.sqrt(w*h/40000)));for(let y=0;y<h;y+=step)for(let x=0;x<w;x+=step){n++;if(d[(y*w+x)*4+3]<245)tr++}}catch(_){}
+    const hasAlpha=n>0&&tr/n>0.04;
+    cv.toBlob(b=>{
+     if(!b)return reject(Error('Could not process this image'));
+     if(b.size>3.2*1024*1024&&side>700){side=Math.round(side*.8);attempt();return}
+     resolve({blob:b,hasAlpha});
+    },hasAlpha?'image/webp':'image/jpeg',hasAlpha?.9:.88);
+   };
+   attempt();
+  };
+  img.onerror=()=>{URL.revokeObjectURL(url);reject(Error('That file could not be read as an image'))};
+  img.src=url;
+ });
+}
 function bindImageFields(form){
  form.querySelectorAll('[data-imgfield]').forEach(box=>{
   const name=box.dataset.imgfield,prev=box.querySelector('.imgprev'),file=box.querySelector('input[type=file]'),field=form.elements[name],pick=box.querySelector('[data-pick]'),clr=box.querySelector('[data-clear]');
   const show=u=>{prev.innerHTML=u?`<img src="${esc(u)}" alt="">`:'No flyer yet — upload one below'};
   pick.onclick=()=>file.click();
-  clr.onclick=()=>{field.value='';show('')};
+  clr.onclick=()=>{field.value='';show('');if(box.dataset.detect&&form.elements[box.dataset.detect])form.elements[box.dataset.detect].value='cutout'};
   field.addEventListener('input',()=>show(field.value.trim()));
   file.onchange=async()=>{
    const f=file.files[0];file.value='';if(!f)return;
    if(!/^image\//.test(f.type)){toast('Please choose an image file (JPG, PNG or WEBP)','error');return}
    const old=pick.textContent;pick.disabled=true;pick.textContent='Uploading…';
    try{
-    const blob=await compressImage(f),token=await TCCAdmin.token();
-    const r=await fetch('/api/upload',{method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({contentType:blob.type||'image/jpeg',dataBase64:await blobToBase64(blob),caption:f.name,category:'Program Flyer',purpose:'program'})});
+    let blob,hasAlpha=false;
+    if(box.dataset.alpha==='1'){const pr=await prepareImage(f);blob=pr.blob;hasAlpha=pr.hasAlpha}else blob=await compressImage(f);
+    const token=await TCCAdmin.token();
+    const r=await fetch('/api/upload',{method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({contentType:blob.type||'image/jpeg',dataBase64:await blobToBase64(blob),caption:f.name,category:box.dataset.category||'Program Flyer',purpose:box.dataset.purpose||'program'})});
     let d={};try{d=await r.json()}catch(_){}
     if(!r.ok)throw Error(d.error||`Upload failed (${r.status})`);
-    field.value=d.url;show(d.url);toast('Flyer uploaded. Press Save Changes to publish it.');
+    field.value=d.url;show(d.url);if(box.dataset.detect&&form.elements[box.dataset.detect])form.elements[box.dataset.detect].value=hasAlpha?'cutout':'photo';toast('Photo uploaded. Press Save to publish it.');
    }catch(e){toast(e.message,'error')}
    finally{pick.disabled=false;pick.textContent=old}
   };
  });
+}
+
+function enhanceStaticImageFields(){
+ const about=$('#aboutForm');
+ if(about&&about.elements.about_image_url&&!about.querySelector('[data-imgfield]')){
+  const fe=about.elements.about_image_url.closest('.field');
+  fe.outerHTML=imageFieldHtml('about_image_url','About photo','','data-purpose="about" data-category="About"','JPG, PNG or WEBP. Large images are resized automatically. You can also paste an image link.');
+  bindImageFields(about);
+ }
+ const wf=$('#welcomeForm');
+ if(wf&&!wf.querySelector('[data-imgfield]')){
+  const fe=wf.querySelector('.welcome-photo-slot');
+  fe.outerHTML=imageFieldHtml('welcome_photo_url','Photo','','data-purpose="welcome" data-category="Welcome" data-alpha="1" data-detect="welcome_photo_mode"','Use a portrait picture. A PNG or WEBP with a transparent background looks best (she appears to stand on the page). A normal photo is shown in a rounded frame. Leave empty to use the standard photo.');
+  bindImageFields(wf);
+ }
 }
 function openEditor(page,id,row={}){
  const c=configs[page],m=$('#modal'),f=$('#editor');if(!m||!f)return;
@@ -190,20 +232,21 @@ async function loadHero(){
   const d=await api('settings'),s=(d.items||[])[0]||{};
   ['hero_eyebrow','hero_title','hero_body','hero_interval_seconds'].forEach(n=>{const x=$('#heroForm').elements[n];if(x)x.value=s[n]??''});
   ['about_label','about_heading','about_body','about_quote','about_image_url'].forEach(n=>{const x=$('#aboutForm').elements[n];if(x)x.value=s[n]??''});
+  {const ax=$('#aboutForm').elements.about_image_url;if(ax)ax.dispatchEvent(new Event('input'))}
  }catch(e){toast(e.message,'error')}
 }
 function localDateTimeValue(iso){if(!iso)return '';try{const d=new Date(iso);if(Number.isNaN(d.getTime()))return '';const pad=n=>String(n).padStart(2,'0');return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`}catch(_){return ''}}
 function isoFromLocalDateTime(v){if(!v)return null;const d=new Date(v);return Number.isNaN(d.getTime())?null:d.toISOString()}
 async function saveSettings(form){
- const data={};[...form.elements].forEach(x=>{if(x.name)data[x.name]=x.type==='checkbox'?x.checked:x.value});
+ const data={};[...form.elements].forEach(x=>{if(x.name)data[x.name]=x.type==='checkbox'?x.checked:(x.type==='number'?(x.value===''?null:Number(x.value)):x.value)});
  if(data.launch_date!==undefined)data.launch_date=isoFromLocalDateTime(data.launch_date);
  if(data.library_url&&!/^https?:\/\//i.test(data.library_url.trim())){toast('The library link must start with https://','error');return}
- try{await api('settings','POST',{data});toast('Saved successfully')}catch(e){const m=String(e.message||'');toast(/library_|column|schema cache/i.test(m)?'One-time setup needed: run supabase/library_link_migration.sql in Supabase (SQL Editor), then save again.':m,'error')}
+ try{await api('settings','POST',{data});toast('Saved successfully')}catch(e){const m=String(e.message||'');toast(/welcome_/i.test(m)?'One-time setup needed: run supabase/welcome_page_migration.sql in Supabase (SQL Editor), then save again.':/library_|column|schema cache/i.test(m)?'One-time setup needed: run supabase/library_link_migration.sql in Supabase (SQL Editor), then save again.':m,'error')}
 }
 async function loadLive(){
  try{
   const d=await api('live_status'),s=(d.items||[])[0]||{},f=$('#liveForm');
-  ['title','description','stream_url','embed_url'].forEach(n=>{if(f.elements[n])f.elements[n].value=s[n]??''});
+  ['title','description','stream_url','embed_url','youtube_channel_id'].forEach(n=>{if(f.elements[n])f.elements[n].value=s[n]??''});if(f.elements.auto_enabled)f.elements.auto_enabled.checked=!!s.auto_enabled;
   f.elements.is_live.checked=!!s.is_live;window.TCCLive&&TCCLive.refreshAdminPreview&&TCCLive.refreshAdminPreview();$('#liveStatus').textContent=s.is_live?'LIVE NOW':'OFFLINE';$('#liveBadge').classList.toggle('live',!!s.is_live);
  }catch(e){$('#liveStatus').textContent='ERROR';toast(e.message,'error')}
 }
@@ -287,6 +330,8 @@ async function loadSettings(){
   const d=await api('settings'),s=(d.items||[])[0]||{};
   ['church_name','email','phone','location','map_url','logo_url'].forEach(n=>{const x=$('#settingsForm').elements[n];if(x)x.value=s[n]??''});
   const lib=$('#libraryForm'); if(lib){lib.elements.library_enabled.checked=s.library_enabled!==false;lib.elements.library_url.value=s.library_url||'https://cyberbishop.org';lib.elements.library_title.value=s.library_title||'';lib.elements.library_text.value=s.library_text||'';lib.elements.library_button.value=s.library_button||''}
+  const wf=$('#welcomeForm'); if(wf){const E=wf.elements;E.welcome_enabled.checked=s.welcome_enabled!==false;E.welcome_photo_url.value=s.welcome_photo_url||'';E.welcome_photo_mode.value=s.welcome_photo_mode||'cutout';E.welcome_title.value=s.welcome_title||'';E.welcome_love.value=s.welcome_love||'';E.welcome_button.value=s.welcome_button||'';E.welcome_hours.value=s.welcome_hours||24}
+  ['#aboutForm','#welcomeForm'].forEach(sel=>{const f=$(sel);if(f)f.querySelectorAll('[data-imgfield]').forEach(b=>{const x=f.elements[b.dataset.imgfield];if(x)x.dispatchEvent(new Event('input'))})});
   const lf=$('#launchForm'); if(lf){lf.elements.launch_enabled.checked=!!s.launch_enabled;lf.elements.launch_date.value=localDateTimeValue(s.launch_date);lf.elements.launch_timezone.value=s.launch_timezone||'Africa/Lagos';lf.elements.launch_title.value=s.launch_title||'THE ORIGIN IS NEAR';lf.elements.launch_subtitle.value=s.launch_subtitle||'Christ at the centre. Everything else follows.';lf.elements.launch_complete_title.value=s.launch_complete_title||'WE ARE LIVE';lf.elements.launch_complete_body.value=s.launch_complete_body||'Welcome to The Christocentric Church.';}
   ['facebook_url','instagram_url','youtube_url','spotify_url'].forEach(n=>{const x=$('#socialForm').elements[n];if(x)x.value=s[n]??''});
  }catch(e){toast(e.message,'error')}
@@ -451,9 +496,23 @@ function bind(){
  $('#aboutForm')?.addEventListener('submit',e=>{e.preventDefault();saveSettings(e.target)});
  $('#settingsForm')?.addEventListener('submit',e=>{e.preventDefault();saveSettings(e.target)});
  $('#libraryForm')?.addEventListener('submit',e=>{e.preventDefault();saveSettings(e.target)});
+ $('#welcomeForm')?.addEventListener('submit',e=>{e.preventDefault();saveSettings(e.target)});
+ $('#welcomePreview')?.addEventListener('click',()=>window.open('/?welcome=1','_blank'));
  $('#launchForm')?.addEventListener('submit',e=>{e.preventDefault();saveSettings(e.target)});
  $('#socialForm')?.addEventListener('submit',e=>{e.preventDefault();saveSettings(e.target)});
- $('#liveForm')?.addEventListener('submit',async e=>{e.preventDefault();const data={};[...e.currentTarget.elements].forEach(x=>{if(x.name)data[x.name]=x.type==='checkbox'?x.checked:x.value});try{await api('live_status','POST',{data});toast('Live settings saved');await loadLive()}catch(x){toast(x.message,'error')}});
+ $('#autoCheck')?.addEventListener('click',async()=>{
+  const box=$('#autoCheckResult'),f=$('#liveForm'),b=$('#autoCheck');box.style.display='block';box.textContent='Checking YouTube…';b.disabled=true;
+  try{
+   const token=await TCCAdmin.token();
+   const r=await fetch('/api/live-status?check=1&channel='+encodeURIComponent(f.elements.youtube_channel_id.value.trim()),{headers:{Authorization:`Bearer ${token}`},cache:'no-store'});
+   const d=await r.json();
+   if(!r.ok)box.textContent=d.error||'Could not run the test';
+   else if(!d.ok)box.textContent='\u26a0 '+d.message;
+   else box.textContent='\u2713 Connected to \u201c'+d.channelTitle+'\u201d. '+(d.live?'It is LIVE right now: \u201c'+d.live.title+'\u201d'+(d.live.embeddable?'.':' (but YouTube has embedding switched off for it, so visitors will get a button that opens YouTube).'):'Not live at the moment'+(d.last?'. Last broadcast: \u201c'+d.last.title+'\u201d.':'.'));
+  }catch(e){box.textContent=e.message}
+  finally{b.disabled=false}
+ });
+ $('#liveForm')?.addEventListener('submit',async e=>{e.preventDefault();const data={};[...e.currentTarget.elements].forEach(x=>{if(x.name)data[x.name]=x.type==='checkbox'?x.checked:x.value});try{await api('live_status','POST',{data});toast('Live settings saved');await loadLive()}catch(x){const m=String(x.message||'');toast(/auto_enabled|youtube_channel_id|column|schema cache/i.test(m)?'One-time setup needed: run supabase/live_auto_youtube_migration.sql in Supabase (SQL Editor), then save again.':m,'error')}});
  $('#roleInviteForm')?.addEventListener('submit',async e=>{
   e.preventDefault();const f=e.currentTarget,btn=f.querySelector('button'),msg=$('#roleInviteMsg');
   if(!f.department_id.value){msg.textContent='Choose a department first.';return}
@@ -472,6 +531,7 @@ function bind(){
  $('#addMediaUrlBtn')?.addEventListener('click',addMediaByUrl);
 }
 async function boot(){
+ enhanceStaticImageFields();
  try{
   const u=await TCCAdmin.init();if(!u){showLogin();return}
   $('#app').classList.remove('hidden');bind();go(location.hash.slice(1)||'dashboard');

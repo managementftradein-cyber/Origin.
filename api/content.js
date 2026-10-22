@@ -69,8 +69,14 @@ async function getSiteContent(db) {
     const l = await db.from('church_settings').select('library_enabled,library_url,library_title,library_text,library_button').eq('id', 1).maybeSingle();
     if (!l.error && l.data) library = l.data;
   } catch (_) { /* keep defaults */ }
+  // Welcome page settings (photo, wording, on/off) are separate columns too; same safe fallback.
+  let welcome = {};
+  try {
+    const w = await db.from('church_settings').select('welcome_enabled,welcome_photo_url,welcome_photo_mode,welcome_title,welcome_love,welcome_button,welcome_hours').eq('id', 1).maybeSingle();
+    if (!w.error && w.data) welcome = w.data;
+  } catch (_) { /* keep defaults */ }
   return {
-    settings: { ...(settings.data || {}), ...library },
+    settings: { ...(settings.data || {}), ...library, ...welcome },
     hero: (hero.length ? hero : items.slice(0, 3)).slice(0, 12),
     gallery: items.filter(x => String(x.category || '').toLowerCase() !== 'hero')
   };
