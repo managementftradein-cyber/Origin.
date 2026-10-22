@@ -31,6 +31,7 @@ Set these in Vercel:
 - SUPABASE_ANON_KEY (or SUPABASE_PUBLISHABLE_KEY)
 - SUPABASE_SERVICE_ROLE_KEY
 - ADMIN_EMAILS
+- YOUTUBE_API_KEY (optional: only for automatic YouTube live detection; see LIVE-YOUTUBE-AUTO-GUIDE.md)
 
 `ADMIN_EMAILS` must contain the exact Supabase Auth email(s) allowed to use `/admin/`.
 

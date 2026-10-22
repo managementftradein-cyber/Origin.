@@ -12,7 +12,7 @@ const API = VERSION + '-api';
 
 const PRECACHE = [
   '/offline', '/assets/logo-emblem.png', '/assets/logo-wordmark.png', '/assets/pwa/icon-192.png',
-  '/tcc-fx.css', '/tcc-fx.js', '/tcc-library.js', '/tcc-live.js', '/tcc-pwa.js', '/accent-color.js'
+  '/tcc-fx.css', '/tcc-fx.js', '/tcc-library.js', '/tcc-live.js', '/tcc-livebar.js', '/tcc-welcome.js', '/tcc-pwa.js', '/assets/welcome/welcome-cutout-sm.webp', '/assets/welcome/tcc-pattern.png', '/accent-color.js'
 ];
 /* every one of these is the same single-page shell (index.html) */
 const SPA_ROUTES = ['/', '/about', '/programs', '/partnership', '/college', '/contact', '/give', '/find-us'];

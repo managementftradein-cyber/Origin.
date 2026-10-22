@@ -130,7 +130,7 @@ body{overflow-x:hidden}
 .tcc-map-frame iframe{width:100%;height:100%;min-height:390px;border:0;display:block}
 @media(max-width:900px){.tcc-map-grid{grid-template-columns:1fr}.tcc-map-frame,.tcc-map-frame iframe{min-height:300px}}
 </style>
-<link rel="stylesheet" href="/tcc-fx.css"><style>.tcc-kicker,.tcc-meta,.tcc-brandbar-title{color:var(--tcc-red2,#7AA7FF)}</style><script src="/tcc-library.js" defer></script><script src="/tcc-pwa.js" defer></script></head><body>
+<link rel="stylesheet" href="/tcc-fx.css"><style>.tcc-kicker,.tcc-meta,.tcc-brandbar-title{color:var(--tcc-red2,#7AA7FF)}</style><script src="/tcc-library.js" defer></script><script src="/tcc-pwa.js" defer></script><script src="/tcc-livebar.js" defer></script></head><body>
 <header class="tcc-brandbar"><a class="tcc-brandbar-brand" href="/"><img src="/assets/logo-emblem.png" alt="The Christocentric Church logo"><strong>THE CHRISTOCENTRIC<em>CHURCH</em></strong></a><span class="tcc-brandbar-title">Live</span></header>
 <div class="tcc-desktop-hub" aria-label="TCC special sections">
   <span class="hub-label">TCC Hub</span>
@@ -165,13 +165,15 @@ body{overflow-x:hidden}
 (function(){
   var box=document.getElementById('player'),titleEl=document.getElementById('title'),descEl=document.getElementById('desc'),
       statusEl=document.getElementById('status'),openEl=document.getElementById('watchLink'),noticeEl=document.getElementById('liveNotice');
-  var shown=null,playing=false,lastSig='',pending=null;
+  var shown=null,playing=false,lastSig='',pending=null,wasLive=false,baseTitle=document.title;
+  function flash(msg){noticeEl.textContent=msg;noticeEl.hidden=false;clearTimeout(flash.t);flash.t=setTimeout(function(){if(!pending)noticeEl.hidden=true},14000)}
 
   function meta(d,res){
     var live=!!d.is_live;
     titleEl.textContent=d.title||(live?'TCC Live':(res?'Latest broadcast':'TCC Live'));
     descEl.textContent=d.description||(live?'Join the live program now.':(res?'Watch the most recent broadcast.':'No program is currently live.'));
     statusEl.textContent=live?'LIVE NOW':(res?'REPLAY':'OFFLINE');
+    document.title=live?('\uD83D\uDD34 LIVE \u2014 '+titleEl.textContent):baseTitle;
     if(res&&res.watch){openEl.href=res.watch;openEl.textContent='Open on '+res.provider+' \u2197';openEl.hidden=false}else{openEl.hidden=true}
   }
   function render(d,res){
@@ -180,8 +182,12 @@ body{overflow-x:hidden}
   }
   function apply(d){
     var res=TCCLive.pick(d),key=res?res.key:'';
+    /* YouTube says this video cannot be embedded: give visitors a button that opens it on YouTube instead */
+    if(res&&d.embeddable===false&&res.kind==='iframe')res=Object.assign({},res,{kind:'link'});
     var sig=[!!d.is_live,key,d.title||'',d.description||''].join('|');
     if(sig===lastSig)return;
+    if(lastSig&&!wasLive&&d.is_live&&!playing)flash("We\u2019re live now! Press Play to join.");
+    wasLive=!!d.is_live;
     if(playing&&shown&&key!==shown.key){ /* never interrupt someone who is watching */
       pending=d;noticeEl.textContent='A new broadcast is available. ';
       var b=document.createElement('button');b.type='button';b.textContent='Switch now';
@@ -201,7 +207,7 @@ body{overflow-x:hidden}
     try{var r=await fetch('/api/live-status',{cache:'no-store'});if(!r.ok)return;apply(await r.json())}catch(_){}
   }
   load();
-  setInterval(function(){if(!document.hidden)load()},30000);
+  setInterval(function(){if(!document.hidden)load()},20000);
   document.addEventListener('visibilitychange',function(){if(!document.hidden)load()});
 })();
 </script>
