@@ -8,6 +8,7 @@ const routes = {
   community: require('../lib/api/community'),
   'community-upload': require('../lib/api/community-upload'),
   content: require('../lib/api/content'),
+  sermons: require('../lib/api/content'),
   'cron-backup': require('../lib/api/cron-backup'),
   forms: require('../lib/api/forms'),
   'live-status': require('../lib/api/live-status'),
