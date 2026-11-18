@@ -96,6 +96,7 @@ async function getGiving(db) {
 
 const HANDLERS = {
   events: getEvents,
+  sermons: getSermons,
   departments: getDepartments,
   photos: getPhotos,
   news: getNews,
@@ -106,7 +107,11 @@ const HANDLERS = {
 
 module.exports = async (req, res) => {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
-  const type = String(req.query.type || '');
+
+  // Existing routes pass ?type=...; direct paths like /api/sermons are read from the URL.
+  const fromPath = (String(req.url || '').match(/^\/api\/([^/?]+)/) || [])[1];
+  const type = String(req.query.type || fromPath || '');
+
   const handler = HANDLERS[type];
   if (!handler) return res.status(400).json({ error: `Unknown content type: ${type}` });
   try {
