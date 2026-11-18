@@ -94,6 +94,33 @@ async function getGiving(db) {
   return { items: q.data || [] };
 }
 
+async function getSermons(db) {
+  // select('*') so this keeps working whatever the sermons table's exact columns are called.
+  const q = await db.from('sermons').select('*').limit(200);
+  if (q.error) throw q.error;
+
+  const clean = (v) => (v == null ? null : (String(v).trim() || null));
+
+  const items = (q.data || [])
+    .filter(r => r.is_published !== false && r.published !== false && r.is_active !== false)
+    .map(r => ({
+      id: r.id,
+      title: clean(r.title) || 'Untitled message',
+      speaker: clean(r.speaker || r.preacher || r.minister),
+      date: r.date || r.sermon_date || null,
+      video_url: clean(r.video_url || r.youtube_url || r.url),
+      description: clean(r.description || r.summary),
+      created_at: r.created_at || null
+    }))
+    .sort((a, b) => {
+      const ta = Date.parse(a.date || a.created_at || '') || 0;
+      const tb = Date.parse(b.date || b.created_at || '') || 0;
+      return tb - ta; // newest first
+    });
+
+  return { items };
+}
+
 const HANDLERS = {
   events: getEvents,
   sermons: getSermons,
