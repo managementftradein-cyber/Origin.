@@ -20,12 +20,16 @@ const routes = {
 };
 
 module.exports = async (req, res) => {
-  const pathname = String(req.url || '').split('?')[0].replace(/^\/+/, '');
-  const parts = pathname.split('/');
-  const name = parts[1] || '';
-  const handler = routes[name];
+  try {
+    const pathname = String(req.url || '').split('?')[0].replace(/^\/+/, '');
+    const parts = pathname.split('/');
+    const name = parts[1] || '';
+    const handler = routes[name];
 
-  if (!handler) return res.status(404).json({ error: 'API route not found' });
-  if (name === 'sermons') req.query.type = 'sermons';
-  return handler(req, res);
+    if (!handler) return res.status(404).json({ error: 'API route not found' });
+    return await handler(req, res);
+  } catch (e) {
+    console.error('API router error:', e);
+    if (!res.headersSent) return res.status(500).json({ error: e && e.message ? e.message : 'Server error' });
+  }
 };
