@@ -19,7 +19,11 @@ const configs={
   ['is_published','Show on website','check',true]
  ],cols:['image_url','title','date','display_order','is_published']},
  sermons:{title:'Sermons',resource:'sermons',fields:[
-  ['title','Title','input'],['speaker','Speaker','input'],['date','Date','input'],['video_url','Video URL','input'],['description','Description','textarea']
+  ['title','Title','input'],['speaker','Speaker','input'],['date','Date','input'],
+  ['video_url','Video: upload a file, or paste a YouTube / Facebook link','media',{bucket:'sermon-video',accept:'video/mp4,video/webm,.mp4,.webm',kind:'video',note:'MP4 or WEBM. Long sermons are usually better on YouTube/Facebook: paste the link instead.'}],
+  ['audio_url','Audio for the app\'s Listen mode (MP3 or M4A)','media',{bucket:'sermon-audio',accept:'audio/mpeg,audio/mp4,.mp3,.m4a',kind:'audio',durationField:'audio_seconds',note:'MP3 at 64 kbps is plenty (about 29 MB per hour).'}],
+  ['audio_seconds','Audio length in seconds (filled in automatically after upload)','number'],
+  ['description','Description','textarea']
  ],cols:['title','speaker','date']},
  announcements:{title:'Announcements',resource:'announcements',fields:[
   ['title','Title','input'],['body','Announcement','textarea']
@@ -71,7 +75,7 @@ function go(p){
  if(!$('#'+p))p='dashboard';
  $$('.page').forEach(x=>x.classList.remove('active'));$('#'+p).classList.add('active');
  $$('.nav button').forEach(x=>x.classList.toggle('active',x.dataset.p===p));
- const names={dashboard:'Dashboard',analytics:'Analytics',hero:'Hero & About',news:'TCC News',prophetic:'Prophetic Room',live:'Live Control',events:'Programs & Events',sermons:'Sermons',announcements:'Announcements',ministries:'Ministries',gallery:'Gallery & Media',communityPosts:'Community Posts',communityComments:'Community Comments',roles:'Community Roles',prayers:'Prayer Requests',messages:'Contact Messages',subscribers:'Subscribers',giving:'Giving',settings:'Church Settings',admins:'Administrators'};
+ const names={dashboard:'Dashboard',analytics:'Analytics',hero:'Hero & About',news:'TCC News',prophetic:'Prophetic Room',live:'Live Control',push:'App Notifications',events:'Programs & Events',sermons:'Sermons',announcements:'Announcements',ministries:'Ministries',gallery:'Gallery & Media',communityPosts:'Community Posts',communityComments:'Community Comments',roles:'Community Roles',prayers:'Prayer Requests',messages:'Contact Messages',subscribers:'Subscribers',giving:'Giving',settings:'Church Settings',admins:'Administrators'};
  $('#title').textContent=names[p]||p;
  history.replaceState(null,'','#'+p);
  load(p);
@@ -181,6 +185,45 @@ function bindImageFields(form){
  });
 }
 
+
+/* ---------- App Notifications (mobile app push) ---------- */
+async function pushApi(action,method='GET',body=null){
+ const token=await TCCAdmin.token();
+ const r=await fetch('/api/push?action='+action,{method,headers:Object.assign({Authorization:`Bearer ${token}`},body?{'Content-Type':'application/json'}:{}),body:body?JSON.stringify(body):undefined,cache:'no-store'});
+ let d={};try{d=await r.json()}catch(_){}
+ if(!r.ok)throw Error(d.error||`Request failed (${r.status})`);
+ return d;
+}
+async function loadPush(){
+ const box=$('#pushStats'),setup=$('#pushSetup'),rec=$('#pushRecent');if(!box)return;
+ box.textContent='Loading…';
+ try{
+  const d=await pushApi('stats');
+  box.textContent=`${d.devices} phone${d.devices===1?'':'s'} have the app (iPhone ${d.ios}, Android ${d.android}). ${d.wantsLive} want live alerts, ${d.wantsNews} want announcements.`;
+  $('#pushAuto').checked=d.auto_push!==false;
+  const todo=[];if(!d.setup.cronSecret)todo.push('To announce a live service when nobody has the website open, add CRON_SECRET in Vercel and set up the one-minute check (see APP-NOTIFICATIONS-GUIDE.md).');if(!d.setup.youtubeKey)todo.push('Automatic YouTube detection is off (no YOUTUBE_API_KEY), so alerts only go out when you tick "Broadcast is LIVE" in Live Control.');
+  setup.style.display=todo.length?'block':'none';setup.textContent=todo.join(' ');
+  rec.textContent='';
+  if(!d.recent.length)rec.textContent='Nothing sent yet.';
+  d.recent.forEach(x=>{const row=document.createElement('div');row.style.cssText='padding:8px 0;border-bottom:1px solid rgba(255,255,255,.08)';row.textContent=`${new Date(x.created_at).toLocaleString('en-GB',{timeZone:'Africa/Lagos',dateStyle:'medium',timeStyle:'short'})} · ${x.kind==='live'?'Live alert':'Message'} · ${x.title} · delivered to ${x.recipients}${x.failed?` (${x.failed} failed)`:''}`;rec.appendChild(row)});
+ }catch(e){
+  box.textContent=/relation|does not exist|schema cache|push_/i.test(e.message)?'One-time setup needed: run supabase/push_notifications_migration.sql in Supabase (SQL Editor), then reload this page.':e.message;
+ }
+}
+$('#pushAuto')?.addEventListener('change',async e=>{
+ try{await api('live_status','POST',{data:{auto_push:e.target.checked}});toast(e.target.checked?'Automatic live alerts are ON':'Automatic live alerts are OFF')}
+ catch(x){e.target.checked=!e.target.checked;toast(/auto_push|column|schema cache/i.test(x.message)?'One-time setup needed: run supabase/push_notifications_migration.sql in Supabase (SQL Editor).':x.message,'error')}
+});
+$('#pushForm')?.addEventListener('submit',async e=>{
+ e.preventDefault();const f=e.target,btn=f.querySelector('button');
+ if(!confirm('Send this notification to the phones now? It cannot be taken back.'))return;
+ btn.disabled=true;
+ try{
+  const d=await pushApi('send','POST',{title:f.elements.title.value.trim(),body:f.elements.body.value.trim(),audience:f.elements.audience.value,screen:f.elements.screen.value});
+  toast(d.devices?`Sent to ${d.sent} of ${d.devices} phones`:'No phones to send to yet');f.reset();loadPush();
+ }catch(x){toast(x.message,'error')}
+ finally{btn.disabled=false}
+});
 function enhanceStaticImageFields(){
  const about=$('#aboutForm');
  if(about&&about.elements.about_image_url&&!about.querySelector('[data-imgfield]')){
@@ -195,6 +238,67 @@ function enhanceStaticImageFields(){
   bindImageFields(wf);
  }
 }
+/* ---------- video / audio upload field: the file goes straight to Supabase Storage (no 4.5 MB limit) ---------- */
+(function(){const st=document.createElement('style');st.textContent='.mediafield{display:grid;gap:10px}.mediafield .mprev{border:1px dashed #2a3f73;border-radius:8px;min-height:70px;display:grid;place-items:center;overflow:hidden;background:#0b1020;color:#8fa3d6;font-size:13px;padding:8px;text-align:center;word-break:break-all}.mediafield video{width:100%;max-height:240px;background:#000}.mediafield audio{width:100%}.mediafield .mbtns{display:flex;gap:8px;flex-wrap:wrap}.mediafield .mbar{height:8px;border-radius:4px;background:#12203f;overflow:hidden;display:none}.mediafield .mbar>i{display:block;height:100%;width:0;background:var(--red);transition:width .15s}.mediafield .mnote{color:#8fa3d6;font-size:12px}';document.head.appendChild(st)})();
+const MEDIA_EXT={'sermon-video':{mp4:1,webm:1},'sermon-audio':{mp3:1,m4a:1}};
+const isDirectMedia=u=>/\.(mp4|webm|mp3|m4a)(\?|#|$)/i.test(u);
+function mediaFieldHtml(n,label,v,o={}){
+ const kind=o.kind||'video';
+ return `<div class="field"><label>${esc(label)}</label><div class="mediafield" data-mediafield="${esc(n)}" data-bucket="${esc(o.bucket||'')}" data-kind="${esc(kind)}" data-duration="${esc(o.durationField||'')}">
+  <div class="mprev"></div>
+  <div class="mbtns"><button type="button" class="btn red" data-pick>Upload ${kind==='audio'?'audio':'video'} file</button><button type="button" class="btn" data-clear>Remove</button></div>
+  <input type="file" accept="${esc(o.accept||'')}" hidden>
+  <div class="mbar"><i></i></div>
+  <input name="${esc(n)}" type="text" value="${esc(v)}" placeholder="…or paste a link">
+  <div class="mnote">${esc(o.note||'')}</div></div></div>`;
+}
+async function uploadLarge(file,bucket,onProgress){
+ const ext=(file.name.split('.').pop()||'').toLowerCase();
+ if(!(MEDIA_EXT[bucket]&&MEDIA_EXT[bucket][ext]))throw Error('This file type is not allowed here. Use '+Object.keys(MEDIA_EXT[bucket]||{}).join(' or ').toUpperCase()+'.');
+ const token=await TCCAdmin.token();if(!token)throw Error('Your admin session has expired. Please sign in again.');
+ const r=await fetch('/api/upload?action=sign',{method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({bucket,ext})});
+ let d={};try{d=await r.json()}catch(_){}
+ if(!r.ok)throw Error(d.error||`Could not start the upload (${r.status})`);
+ return new Promise((resolve,reject)=>{
+  const fd=new FormData();fd.append('cacheControl','31536000');fd.append('',file);
+  const x=new XMLHttpRequest();x.open('PUT',d.signedUrl);x.setRequestHeader('x-upsert','false');
+  x.upload.onprogress=e=>{if(e.lengthComputable&&onProgress)onProgress(e.loaded/e.total)};
+  x.onerror=()=>reject(Error('Network error while uploading. Check your connection and try again.'));
+  x.onload=()=>{
+   if(x.status>=200&&x.status<300)return resolve(d.publicUrl);
+   let m='';try{const j=JSON.parse(x.responseText);m=j.message||j.error||''}catch(_){}
+   reject(Error(x.status===413||/too large|exceed|size/i.test(m)?'This file is larger than your Supabase storage plan allows. Use a smaller file, or paste a YouTube / Facebook link instead.':(m||`Upload failed (${x.status})`)));
+  };
+  x.send(fd);
+ });
+}
+function mediaDuration(url){return new Promise(res=>{const a=new Audio();a.preload='metadata';a.onloadedmetadata=()=>res(isFinite(a.duration)?Math.round(a.duration):0);a.onerror=()=>res(0);a.src=url})}
+function bindMediaFields(form){
+ form.querySelectorAll('[data-mediafield]').forEach(box=>{
+  const name=box.dataset.mediafield,kind=box.dataset.kind,bucket=box.dataset.bucket,dur=box.dataset.duration;
+  const prev=box.querySelector('.mprev'),file=box.querySelector('input[type=file]'),field=form.elements[name],pick=box.querySelector('[data-pick]'),clr=box.querySelector('[data-clear]'),bar=box.querySelector('.mbar'),fill=bar.firstElementChild;
+  const show=u=>{
+   if(!u){prev.textContent=kind==='audio'?'No audio yet':'No video yet';return}
+   if(isDirectMedia(u))prev.innerHTML=kind==='audio'?`<audio controls preload="metadata" src="${esc(u)}"></audio>`:`<video controls preload="metadata" playsinline src="${esc(u)}"></video>`;
+   else prev.innerHTML=`<span>Link: ${esc(u)}</span>`;
+  };
+  show(field.value.trim());
+  field.addEventListener('input',()=>show(field.value.trim()));
+  pick.onclick=()=>file.click();
+  clr.onclick=()=>{field.value='';show('');if(dur&&form.elements[dur])form.elements[dur].value=''};
+  file.onchange=async()=>{
+   const f=file.files[0];if(!f)return;
+   const old=pick.textContent;pick.disabled=true;bar.style.display='block';fill.style.width='0';form.dataset.busy=(+form.dataset.busy||0)+1;
+   try{
+    const url=await uploadLarge(f,bucket,p=>{const n=Math.round(p*100);fill.style.width=n+'%';pick.textContent='Uploading '+n+'%'});
+    field.value=url;show(url);
+    if(dur&&form.elements[dur]){const s=await mediaDuration(url);if(s)form.elements[dur].value=s}
+    toast('File uploaded. Press Save Changes to publish it.');
+   }catch(e){toast(e.message,'error')}
+   finally{pick.disabled=false;pick.textContent=old;bar.style.display='none';file.value='';form.dataset.busy=Math.max(0,(+form.dataset.busy||1)-1)}
+  };
+ });
+}
 function openEditor(page,id,row={}){
  const c=configs[page],m=$('#modal'),f=$('#editor');if(!m||!f)return;
  $('#modalTitle').textContent=(id?'Edit ':'New ')+c.title;
@@ -203,6 +307,7 @@ function openEditor(page,id,row={}){
   if(type==='textarea')return `<div class="field"><label>${esc(label)}</label><textarea name="${n}">${esc(v)}</textarea></div>`;
   if(type==='check'){const on=(row[n]===undefined||row[n]===null)?(def!==undefined?def:false):row[n];return `<label class="switch"><input type="checkbox" name="${n}" ${on?'checked':''}> ${esc(label)}</label>`}
   if(type==='image')return imageFieldHtml(n,label,v);
+  if(type==='media')return mediaFieldHtml(n,label,v,def||{});
   if(type==='datetime')return `<div class="field"><label>${esc(label)}</label><input name="${n}" type="datetime-local" value="${esc(localDateTimeValue(v))}"></div>`;
   if(type==='number')return `<div class="field"><label>${esc(label)}</label><input name="${n}" type="number" step="1" value="${esc(v)}"></div>`;
   const inputType=n==='date'?'date':'text';
@@ -210,19 +315,24 @@ function openEditor(page,id,row={}){
  }).join('')+'<button class="btn red" type="submit">Save Changes</button>';
  m.classList.add('open');
  bindImageFields(f);
+ bindMediaFields(f);
  f.onsubmit=async e=>{
-  e.preventDefault();const data={};
+  e.preventDefault();
+  if(+f.dataset.busy>0){toast('Please wait for the upload to finish, then press Save again.','error');return}
+  const data={};
   for(const [n,,type] of c.fields){
    const x=f.elements[n];if(!x)continue;
    if(type==='datetime'){const iso=isoFromLocalDateTime(x.value);if(iso)data[n]=iso;else if(!id){toast('Please choose a date and time','error');return}}
    else if(type==='number'){data[n]=x.value===''?null:Number(x.value)}
    else if(type==='image'){data[n]=x.value.trim()||null}
+   else if(type==='media'){data[n]=x.value.trim()||null}
    else data[n]=x.type==='checkbox'?x.checked:x.value;
   }
   try{await api(c.resource,id?'PATCH':'POST',id?{id,data}:{data});m.classList.remove('open');toast(id?'Changes saved':'Created successfully');await loadContent(page)}
   catch(err){
    const msg=String(err.message||'');
    if(page==='events'&&/column|schema cache/i.test(msg))toast('One-time setup needed: run supabase/programs_graphics_migration.sql in Supabase (SQL Editor), then try again.','error');
+   else if(page==='sermons'&&/audio_url|audio_seconds|column|schema cache/i.test(msg))toast('One-time setup needed: run sql/audio_columns.sql in Supabase (SQL Editor), then try again.','error');
    else toast(msg,'error');
   }
  };
@@ -468,7 +578,7 @@ function bindMeetingForm(){
 }
 
 function load(p){
- if(configs[p])loadContent(p);else if(p==='dashboard')dashboard();else if(p==='analytics')analytics();else if(p==='hero')loadHero();else if(p==='live')loadLive();else if(p==='gallery')loadGallery();else if(p==='roles')loadRoles();else if(p==='giving')loadGiving();else if(['prayers','messages','subscribers'].includes(p))privatePage(p);else if(p==='settings')loadSettings();else if(p==='admins')$('#adminInfo').textContent=TCCAdmin.user?`Signed in as ${TCCAdmin.user.email}`:'Not signed in';
+ if(configs[p])loadContent(p);else if(p==='dashboard')dashboard();else if(p==='analytics')analytics();else if(p==='hero')loadHero();else if(p==='live')loadLive();else if(p==='push')loadPush();else if(p==='gallery')loadGallery();else if(p==='roles')loadRoles();else if(p==='giving')loadGiving();else if(['prayers','messages','subscribers'].includes(p))privatePage(p);else if(p==='settings')loadSettings();else if(p==='admins')$('#adminInfo').textContent=TCCAdmin.user?`Signed in as ${TCCAdmin.user.email}`:'Not signed in';
 }
 async function loadGiving(){
  loadGivingAccounts();
