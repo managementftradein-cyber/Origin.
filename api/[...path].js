@@ -1,7 +1,6 @@
 // Single Vercel API entry point.
-// Keeping the implementation modules outside /api avoids creating one
-// serverless function per endpoint and prevents Vercel Hobby's function-count
-// limit from breaking deployment.
+// Keeping the implementation modules outside /api avoids creating one serverless function per endpoint and
+// prevents Vercel Hobby's function-count limit from breaking deployment.
 
 const routes = {
   admin: require('../lib/api/admin'),
@@ -22,14 +21,13 @@ const routes = {
 module.exports = async (req, res) => {
   try {
     const pathname = String(req.url || '').split('?')[0].replace(/^\/+/, '');
-    const parts = pathname.split('/');
-    const name = parts[1] || '';
-    const handler = routes[name];
-
-    if (!handler) return res.status(404).json({ error: 'API route not found' });
-    return await handler(req, res);
+    const name = pathname.split('/')[1] || '';
+    // SECURITY: own-property check. Without it, /api/constructor or /api/toString picked up built-in object functions,
+    // never sent a response and held the request open until the 30 s timeout.
+    if (!Object.prototype.hasOwnProperty.call(routes, name)) return res.status(404).json({ error: 'API route not found' });
+    return await routes[name](req, res);
   } catch (e) {
     console.error('API router error:', e);
-    if (!res.headersSent) return res.status(500).json({ error: e && e.message ? e.message : 'Server error' });
+    if (!res.headersSent) return res.status(500).json({ error: 'Server error' });
   }
 };
