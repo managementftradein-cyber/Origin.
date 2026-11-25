@@ -256,18 +256,35 @@ async function uploadLarge(file,bucket,onProgress){
  const ext=(file.name.split('.').pop()||'').toLowerCase();
  if(!(MEDIA_EXT[bucket]&&MEDIA_EXT[bucket][ext]))throw Error('This file type is not allowed here. Use '+Object.keys(MEDIA_EXT[bucket]||{}).join(' or ').toUpperCase()+'.');
  const token=await TCCAdmin.token();if(!token)throw Error('Your admin session has expired. Please sign in again.');
- const r=await fetch('/api/upload?action=sign',{method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({bucket,ext})});
- let d={};try{d=await r.json()}catch(_){}
- if(!r.ok)throw Error(d.error||`Could not start the upload (${r.status})`);
+ /* step 1 of 2: ask our server for a one-time upload link */
+ let r,d={};
+ try{r=await fetch('/api/upload?action=sign',{method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({bucket,ext})});}
+ catch(e){throw Error('Step 1 of 2 failed: could not reach the website server. Check your connection.')}
+ try{d=await r.json()}catch(_){}
+ if(!r.ok){
+  console.error('upload step 1 failed',r.status,d);
+  const m=d.error||'';
+  if(r.status===400&&/Unsupported file type/i.test(m))throw Error('Step 1 of 2 failed (400): the website is still running the OLD upload.js. Copy the new upload.js into BOTH lib/api and api, deploy, and try again.');
+  if(r.status===404)throw Error('Step 1 of 2 failed (404): /api/upload was not found.');
+  throw Error(`Step 1 of 2 failed (${r.status}): ${m||'no details'}`+(r.status===500?' - the storage bucket "'+bucket+'" probably does not exist yet. Run sql/security_fixes.sql PART 1 in Supabase.':''));
+ }
+ if(!d.signedUrl)throw Error('Step 1 of 2 failed: the server did not return an upload link.');
+ /* step 2 of 2: send the file straight to Supabase Storage */
  return new Promise((resolve,reject)=>{
   const fd=new FormData();fd.append('cacheControl','31536000');fd.append('',file);
   const x=new XMLHttpRequest();x.open('PUT',d.signedUrl);x.setRequestHeader('x-upsert','false');
   x.upload.onprogress=e=>{if(e.lengthComputable&&onProgress)onProgress(e.loaded/e.total)};
-  x.onerror=()=>reject(Error('Network error while uploading. Check your connection and try again.'));
+  x.onerror=()=>reject(Error('Step 2 of 2 failed: the browser could not reach Supabase Storage (network or blocked request). Open the browser console (F12) for details.'));
+  x.ontimeout=()=>reject(Error('Step 2 of 2 failed: the upload timed out.'));
   x.onload=()=>{
    if(x.status>=200&&x.status<300)return resolve(d.publicUrl);
-   let m='';try{const j=JSON.parse(x.responseText);m=j.message||j.error||''}catch(_){}
-   reject(Error(x.status===413||/too large|exceed|size/i.test(m)?'This file is larger than your Supabase storage plan allows. Use a smaller file, or paste a YouTube / Facebook link instead.':(m||`Upload failed (${x.status})`)));
+   let m='';try{const j=JSON.parse(x.responseText);m=j.message||j.error||''}catch(_){m=x.responseText||''}
+   console.error('upload step 2 failed',x.status,x.responseText);
+   let hint='';
+   if(x.status===413||/too large|exceed|size/i.test(m))hint=' This file is larger than your Supabase plan or bucket allows. Use a smaller file, or paste a YouTube / Facebook link instead.';
+   else if(/mime/i.test(m))hint=' The bucket does not accept this file type. Run sql/security_fixes.sql PART 1 (it creates sermon-video for video and sermon-audio for audio).';
+   else if(x.status===401||x.status===403)hint=' The upload link was refused. Start the upload again.';
+   reject(Error(`Step 2 of 2 failed (${x.status}): ${m||'no details'}.${hint}`));
   };
   x.send(fd);
  });
