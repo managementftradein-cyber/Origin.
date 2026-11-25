@@ -1,0 +1,56 @@
+<!--
+  DROP-IN: upload sermon video / audio straight from the admin page (no more pasting links from Supabase).
+  1) Put the <script> once in admin/index.html (after your Supabase client is created).
+  2) Add the two file inputs inside the sermon form, next to your "Video URL" and "Audio URL" boxes.
+  3) CHANGE the ids  sermon_video_url / sermon_audio_url  to the real ids of your two text boxes
+     (right-click the box > Inspect, or send me the sermon form HTML and I will wire it exactly).
+  "supabaseClient" must be the name of your existing Supabase client variable (the one used for sign-in).
+-->
+
+<label>Upload video (mp4 / webm)
+  <input id="sermonVideoFile" type="file" accept="video/mp4,video/webm">
+</label>
+<label>Upload audio (mp3 / m4a)
+  <input id="sermonAudioFile" type="file" accept="audio/mpeg,audio/mp4,.mp3,.m4a">
+</label>
+<div id="uploadStatus" role="status" aria-live="polite"></div>
+
+<script>
+  // Asks the server for a one-time signed link, then sends the file straight to Supabase Storage
+  // (the file never passes through the 4.5 MB serverless limit). Returns the public URL.
+  async function uploadLarge(file, bucket) {
+    const ext = (file.name.split('.').pop() || '').toLowerCase();
+    const { data } = await supabaseClient.auth.getSession();
+    if (!data.session) throw new Error('Please sign in again');
+    const r = await fetch('/api/upload?action=sign', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + data.session.access_token },
+      body: JSON.stringify({ bucket, ext })
+    });
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error || 'Could not start the upload');
+    const up = await supabaseClient.storage.from(j.bucket).uploadToSignedUrl(j.path, j.token, file, { contentType: j.contentType });
+    if (up.error) throw up.error;
+    return j.publicUrl;
+  }
+
+  function wireUpload(fileInputId, urlInputId, bucket) {
+    const input = document.getElementById(fileInputId);
+    const status = document.getElementById('uploadStatus');
+    if (!input) return;
+    input.addEventListener('change', async () => {
+      const f = input.files && input.files[0];
+      if (!f) return;
+      status.textContent = 'Uploading ' + f.name + ' (' + Math.round(f.size / 1048576) + ' MB)... please keep this page open.';
+      try {
+        document.getElementById(urlInputId).value = await uploadLarge(f, bucket);
+        status.textContent = 'Uploaded. Now click Save on the sermon.';
+      } catch (err) {
+        status.textContent = 'Upload failed: ' + (err.message || err);
+      }
+    });
+  }
+
+  wireUpload('sermonVideoFile', 'sermon_video_url', 'sermon-video');   // <- change the id in quotes
+  wireUpload('sermonAudioFile', 'sermon_audio_url', 'sermon-audio');   // <- change the id in quotes
+</script>
