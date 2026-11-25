@@ -1,12 +1,17 @@
 const { sb } = require('./_supabase');
 
-// Consolidated GET/read endpoints. Kept as separate functions internally so
-// each type's query logic is unchanged from the original single-purpose
-// files — only the routing (type dispatch) is new.
+// Consolidated GET/read endpoints (events, sermons, giving, site-content ...).
+// Used by BOTH /api/content?type=... and direct paths such as /api/sermons.
+// api/content.js should simply be:   module.exports = require('../lib/api/content');
+
+// Only ever pass web links through to the apps (blocks javascript:, data:, file: ...).
+const safeUrl = (v) => {
+  const s = v == null ? '' : String(v).trim();
+  return /^https?:\/\//i.test(s) ? s : null;
+};
+const clean = (v) => (v == null ? null : (String(v).trim() || null));
 
 async function getEvents(db) {
-  // Programs page: includes flyer image + display fields. If the programs_graphics migration has not
-  // been run yet, those columns do not exist, so fall back to the original columns instead of failing.
   let q = await db.from('events')
     .select('id,title,date,location,description,image_url,date_label,display_order,is_published')
     .order('display_order', { ascending: true, nullsFirst: false })
@@ -17,8 +22,31 @@ async function getEvents(db) {
   }
   if (q.error) throw q.error;
   const rows = q.data || [];
-  // total lets the site tell "no programs at all" (show built-in flyers) from "all unpublished" (show none)
   return { items: rows.filter(e => e.is_published !== false), total: rows.length };
+}
+
+async function getSermons(db) {
+  const q = await db.from('sermons').select('*').limit(300);
+  if (q.error) throw q.error;
+  const hidden = (r) =>
+    r.is_published === false || r.published === false || r.is_active === false ||
+    ['draft', 'unpublished', 'hidden', 'archived'].includes(String(r.status || '').toLowerCase());
+
+  const items = (q.data || [])
+    .filter((r) => !hidden(r))
+    .map((r) => ({
+      id: r.id,
+      title: clean(r.title) || 'Untitled message',
+      speaker: clean(r.speaker || r.preacher || r.minister),
+      date: r.date || r.sermon_date || null,
+      video_url: safeUrl(r.video_url || r.youtube_url || r.url),
+      audio_url: safeUrl(r.audio_url),
+      audio_seconds: Number.isFinite(Number(r.audio_seconds)) && Number(r.audio_seconds) > 0 ? Math.round(Number(r.audio_seconds)) : null,
+      description: clean(r.description || r.summary),
+      created_at: r.created_at || null
+    }))
+    .sort((a, b) => (Date.parse(b.date || b.created_at || '') || 0) - (Date.parse(a.date || a.created_at || '') || 0));
+  return { items };
 }
 
 async function getDepartments(db) {
@@ -62,14 +90,11 @@ async function getSiteContent(db) {
   if (photos.error) throw photos.error;
   const items = photos.data || [];
   const hero = items.filter(x => String(x.category || '').toLowerCase() === 'hero');
-  // Pastor's Library link settings live in separate columns; if the library migration has not been run
-  // yet this extra query simply fails and the site uses its built-in defaults.
   let library = {};
   try {
     const l = await db.from('church_settings').select('library_enabled,library_url,library_title,library_text,library_button').eq('id', 1).maybeSingle();
     if (!l.error && l.data) library = l.data;
   } catch (_) { /* keep defaults */ }
-  // Welcome page settings (photo, wording, on/off) are separate columns too; same safe fallback.
   let welcome = {};
   try {
     const w = await db.from('church_settings').select('welcome_enabled,welcome_photo_url,welcome_photo_mode,welcome_title,welcome_love,welcome_button,welcome_hours').eq('id', 1).maybeSingle();
@@ -82,7 +107,6 @@ async function getSiteContent(db) {
   };
 }
 
-
 async function getGiving(db) {
   const q = await db.from('giving_accounts')
     .select('id,label,bank_name,account_name,account_number,sort_code,instructions,currency,display_order')
@@ -92,33 +116,6 @@ async function getGiving(db) {
     .limit(30);
   if (q.error) throw q.error;
   return { items: q.data || [] };
-}
-
-async function getSermons(db) {
-  // select('*') so this keeps working whatever the sermons table's exact columns are called.
-  const q = await db.from('sermons').select('*').limit(200);
-  if (q.error) throw q.error;
-
-  const clean = (v) => (v == null ? null : (String(v).trim() || null));
-
-  const items = (q.data || [])
-    .filter(r => r.is_published !== false && r.published !== false && r.is_active !== false)
-    .map(r => ({
-      id: r.id,
-      title: clean(r.title) || 'Untitled message',
-      speaker: clean(r.speaker || r.preacher || r.minister),
-      date: r.date || r.sermon_date || null,
-      video_url: clean(r.video_url || r.youtube_url || r.url),
-      description: clean(r.description || r.summary),
-      created_at: r.created_at || null
-    }))
-    .sort((a, b) => {
-      const ta = Date.parse(a.date || a.created_at || '') || 0;
-      const tb = Date.parse(b.date || b.created_at || '') || 0;
-      return tb - ta; // newest first
-    });
-
-  return { items };
 }
 
 const HANDLERS = {
@@ -135,17 +132,19 @@ const HANDLERS = {
 module.exports = async (req, res) => {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
-  // Existing routes pass ?type=...; direct paths like /api/sermons are read from the URL.
   const fromPath = (String(req.url || '').match(/^\/api\/([^/?]+)/) || [])[1];
   const type = String(req.query.type || fromPath || '');
-
   const handler = HANDLERS[type];
-  if (!handler) return res.status(400).json({ error: `Unknown content type: ${type}` });
+  if (!handler) return res.status(400).json({ error: 'Unknown content type' });
+
   try {
     const data = await handler(sb());
+    // short shared cache: faster for everyone and protects the database from floods.
+    // (admin edits show up within about a minute)
+    res.setHeader('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=300');
     return res.json(data);
   } catch (e) {
-    console.error(e);
-    return res.status(500).json({ error: e.message || 'Could not load content' });
+    console.error('content error:', type, e); // details stay in the Vercel logs only
+    return res.status(500).json({ error: 'Could not load content' });
   }
 };
