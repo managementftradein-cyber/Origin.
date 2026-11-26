@@ -349,7 +349,7 @@ function openEditor(page,id,row={}){
   catch(err){
    const msg=String(err.message||'');
    if(page==='events'&&/column|schema cache/i.test(msg))toast('One-time setup needed: run supabase/programs_graphics_migration.sql in Supabase (SQL Editor), then try again.','error');
-   else if(page==='sermons'&&/audio_url|audio_seconds|column|schema cache/i.test(msg))toast('One-time setup needed: run sql/audio_columns.sql in Supabase (SQL Editor), then try again.','error');
+   else if(page==='sermons'&&/audio_url|audio_seconds|column|schema cache/i.test(msg))toast('Setup needed: the sermons table has no audio columns yet. In Supabase > SQL Editor run sql/audio_columns.sql, then press Save again (your uploaded file is kept).','error');
    else toast(msg,'error');
   }
  };
