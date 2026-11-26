@@ -1,4 +1,28 @@
-const { sb, requireAdmin } = require('./_supabase');
+const crypto = require('crypto');
+const { sb, requireAdmin, requireJson } = require('./_supabase');
+
+// Vercel rejects request bodies over about 4.5 MB, so large files (sermon audio, videos) must go straight to
+// Supabase Storage. This returns a one-time signed upload link; the browser then uploads the file itself:
+//   supabase.storage.from(bucket).uploadToSignedUrl(path, token, file)
+// Set a file-size limit and allowed MIME types on each bucket in Supabase (see sql/security_fixes.sql) because
+// signed uploads bypass the checks below.
+const SIGN = {
+  'sermon-audio': { exts: { mp3: 'audio/mpeg', m4a: 'audio/mp4' } },
+  'sermon-video': { exts: { mp4: 'video/mp4', webm: 'video/webm' } },
+  gallery: { exts: { jpg: 'image/jpeg', png: 'image/png', webp: 'image/webp', mp4: 'video/mp4', webm: 'video/webm' } }
+};
+async function signUpload(req, res) {
+  const { bucket, ext } = req.body || {};
+  const cfg = Object.prototype.hasOwnProperty.call(SIGN, bucket) ? SIGN[bucket] : null;
+  const e = String(ext || '').toLowerCase().replace(/^\./, '');
+  if (!cfg || !Object.prototype.hasOwnProperty.call(cfg.exts, e)) return res.status(400).json({ error: 'Unsupported bucket or file type' });
+  const path = `${Date.now()}-${crypto.randomBytes(12).toString('hex')}.${e}`;
+  const db = sb();
+  const s = await db.storage.from(bucket).createSignedUploadUrl(path);
+  if (s.error) throw s.error;
+  const pub = db.storage.from(bucket).getPublicUrl(path);
+  return res.status(200).json({ bucket, path, token: s.data.token, signedUrl: s.data.signedUrl, publicUrl: pub.data.publicUrl, contentType: cfg.exts[e] });
+}
 
 const BUCKET = 'gallery';
 const IMAGE_MAX_BYTES = 5 * 1024 * 1024; // 5MB
@@ -23,9 +47,12 @@ function matchesVideoSignature(buffer, contentType) {
 }
 
 module.exports = async (req, res) => {
+  res.setHeader('Cache-Control', 'private, no-store');
   try {
     await requireAdmin(req);
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+    if (!requireJson(req, res)) return;
+    if (req.query && req.query.action === 'sign') return await signUpload(req, res);
 
     const { contentType, dataBase64, caption, category, purpose } = req.body || {};
     const isVideo = Object.prototype.hasOwnProperty.call(ALLOWED_VIDEO, contentType);
@@ -43,7 +70,7 @@ module.exports = async (req, res) => {
     if (!signatureOk) return res.status(400).json({ error: `File data does not match the declared ${isVideo ? 'video' : 'image'} type` });
     if (buffer.length > maxBytes) return res.status(400).json({ error: `${isVideo ? 'Video' : 'Image'} is larger than ${Math.round(maxBytes / (1024 * 1024))}MB` });
 
-    const path = `${Date.now()}-${require('crypto').randomBytes(12).toString('hex')}.${ext}`;
+    const path = `${Date.now()}-${crypto.randomBytes(12).toString('hex')}.${ext}`;
     const db = sb();
     const up = await db.storage.from(BUCKET).upload(path, buffer, { contentType, upsert: false });
     if (up.error) throw up.error;
@@ -62,10 +89,11 @@ module.exports = async (req, res) => {
       is_active: true,
       display_order: 0
     }).select().single();
-    if (rec.error) throw rec.error;
+    if (rec.error) { await db.storage.from(BUCKET).remove([path]).catch(() => {}); throw rec.error; } // no orphan file left behind
     return res.status(201).json({ url: pub.data.publicUrl, path, item: rec.data });
   } catch (e) {
     console.error(e);
-    return res.status(e.status || 500).json({ error: e.message || 'Upload failed' });
+    const status = e.status || 500;
+    return res.status(status).json({ error: status === 500 ? 'Upload failed' : e.message });
   }
 };
